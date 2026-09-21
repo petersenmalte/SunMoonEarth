@@ -1,7 +1,7 @@
 {
   "name": "sunmoonearth",
   "version": "1.0.0",
-  "description": "Schematische 3D-Visualisierung von Sonne, Mond und Erde fuer Hamburg und Waterloo",
+  "description": "Schematic 3D visualisation of Sun, Moon and Earth for Hamburg and Waterloo",
   "private": true,
   "type": "module",
   "license": "MIT",

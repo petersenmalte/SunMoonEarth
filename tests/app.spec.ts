@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
-/** Fester Zeitpunkt: 2026-01-03 10:03 UTC ist laut Astronomy Engine Vollmond. */
+/** Fixed moment: Astronomy Engine reports 2026-01-03 10:03 UTC as a full moon. */
 const FULL_MOON = '2026-01-03T10:03:00Z';
-/** 2026-01-18 19:52 UTC ist Neumond. */
+/** 2026-01-18 19:52 UTC is a new moon. */
 const NEW_MOON = '2026-01-18T19:52:00Z';
 
 async function setInstant(page: Page, iso: string) {
@@ -12,7 +12,7 @@ async function setInstant(page: Page, iso: string) {
 async function readValue(page: Page, group: string, label: string): Promise<string> {
   return page.evaluate(
     ({ group, label }) => {
-      const list = document.getElementById('werte')!;
+      const list = document.getElementById('values')!;
       const nodes = Array.from(list.children);
       let inGroup = false;
       for (let i = 0; i < nodes.length; i += 1) {
@@ -33,135 +33,135 @@ async function readValue(page: Page, group: string, label: string): Promise<stri
 
 test.beforeEach(async ({ page }) => {
   await page.goto('./');
-  await expect(page.locator('#werte .readout__group').first()).toBeVisible();
+  await expect(page.locator('#values .readout__group').first()).toBeVisible();
 });
 
-test('startet im Live-Modus mit Hamburg als Beobachter', async ({ page }) => {
-  await expect(page.locator('#zeit-modus-text')).toHaveText('Live – aktuelle Zeit');
+test('starts in live mode with Hamburg as observer', async ({ page }) => {
+  await expect(page.locator('#time-mode-text')).toHaveText('Live – current time');
   await expect(page.getByRole('button', { name: 'Hamburg' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Waterloo' })).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.locator('#zeit-anzeige')).toContainText('Hamburg, Deutschland');
-  await expect(page.locator('#zeit-anzeige')).toContainText(/MEZ|MESZ|GMT\+/);
-  // Der "Jetzt / Live"-Knopf ist im Live-Modus bereits aktiv und daher deaktiviert.
-  await expect(page.locator('#zeit-jetzt')).toBeDisabled();
+  await expect(page.locator('#time-display')).toContainText('Hamburg, Germany');
+  await expect(page.locator('#time-display')).toContainText(/CET|CEST|GMT/);
+  // The "Now / Live" button is already active in live mode and therefore disabled.
+  await expect(page.locator('#time-now')).toBeDisabled();
 });
 
-test('Vollmond und Neumond stimmen mit den Bibliothekswerten überein', async ({ page }) => {
+test('full moon and new moon match the library values', async ({ page }) => {
   await setInstant(page, FULL_MOON);
-  await expect(page.locator('#phasen-anzeige')).toContainText('Vollmond');
-  expect(await readValue(page, 'Mondphase', 'Beleuchtet')).toMatch(/99,\d %|100,0 %/);
+  await expect(page.locator('#phase-indicator')).toContainText('Full Moon');
+  expect(await readValue(page, 'Moon phase', 'Illuminated')).toMatch(/99\.\d %|100\.0 %/);
 
   await setInstant(page, NEW_MOON);
-  await expect(page.locator('#phasen-anzeige')).toContainText('Neumond');
-  expect(await readValue(page, 'Mondphase', 'Beleuchtet')).toMatch(/^0,\d %$/);
+  await expect(page.locator('#phase-indicator')).toContainText('New Moon');
+  expect(await readValue(page, 'Moon phase', 'Illuminated')).toMatch(/^0\.\d %$/);
 });
 
-test('fester Zeitpunkt bleibt stehen und Jetzt/Live kehrt zurück', async ({ page }) => {
-  await page.locator('#zeit-eingabe').fill('2026-06-21T12:00');
-  await page.locator('#zeit-eingabe').dispatchEvent('change');
-  await expect(page.locator('#zeit-modus-text')).toHaveText('Fester Zeitpunkt');
-  const first = await readValue(page, 'Sonne', 'Höhe');
+test('a fixed moment stays put and Now/Live returns to the present', async ({ page }) => {
+  await page.locator('#time-input').fill('2026-06-21T12:00');
+  await page.locator('#time-input').dispatchEvent('change');
+  await expect(page.locator('#time-mode-text')).toHaveText('Fixed moment');
+  const first = await readValue(page, 'Sun', 'Altitude');
 
   await page.waitForTimeout(1500);
-  expect(await readValue(page, 'Sonne', 'Höhe')).toBe(first);
+  expect(await readValue(page, 'Sun', 'Altitude')).toBe(first);
 
-  await page.locator('#zeit-jetzt').click();
-  await expect(page.locator('#zeit-modus-text')).toHaveText('Live – aktuelle Zeit');
+  await page.locator('#time-now').click();
+  await expect(page.locator('#time-mode-text')).toHaveText('Live – current time');
 });
 
-test('Ortswechsel behält den Zeitpunkt und zeigt die andere Ortszeit', async ({ page }) => {
+test('switching location keeps the instant and shows the other local time', async ({ page }) => {
   await setInstant(page, '2026-06-21T12:00:00Z');
-  await expect(page.locator('#zeit-anzeige')).toContainText('14:00');
+  await expect(page.locator('#time-display')).toContainText('14:00');
 
   await page.getByRole('button', { name: 'Waterloo' }).click();
-  await expect(page.locator('#zeit-anzeige')).toContainText('Waterloo, Ontario, Kanada');
-  // Derselbe Zeitpunkt, andere Zeitzone: 12:00 UTC ist 08:00 EDT.
-  await expect(page.locator('#zeit-anzeige')).toContainText('08:00');
-  await expect(page.locator('#ort-detail')).toContainText('America/Toronto');
+  await expect(page.locator('#time-display')).toContainText('Waterloo, Ontario, Canada');
+  // Same instant, different time zone: 12:00 UTC is 08:00 EDT.
+  await expect(page.locator('#time-display')).toContainText('08:00');
+  await expect(page.locator('#location-detail')).toContainText('America/Toronto');
 });
 
-test('Sonne unter dem Horizont wird als solche ausgewiesen', async ({ page }) => {
-  // Mitternacht Ortszeit in Hamburg: die Sonne steht unter dem Horizont.
+test('the Sun below the horizon is reported as such', async ({ page }) => {
+  // Midnight local time in Hamburg: the Sun is below the horizon.
   await setInstant(page, '2026-01-03T23:00:00Z');
-  expect(await readValue(page, 'Sonne', 'Stand')).toBe('unter dem Horizont');
-  const altitude = await readValue(page, 'Sonne', 'Höhe');
-  expect(parseFloat(altitude.replace(',', '.'))).toBeLessThan(0);
-  await expect(page.locator('#werte dd.readout--below').first()).toBeVisible();
+  expect(await readValue(page, 'Sun', 'Position')).toBe('below the horizon');
+  const altitude = await readValue(page, 'Sun', 'Altitude');
+  expect(parseFloat(altitude)).toBeLessThan(0);
+  await expect(page.locator('#values dd.readout--below').first()).toBeVisible();
 });
 
-test('beide Ansichten lassen sich umschalten und zeichnen', async ({ page }) => {
-  await expect(page.locator('#tab-himmel')).toHaveAttribute('aria-selected', 'true');
+test('both views can be switched and render', async ({ page }) => {
+  await expect(page.locator('#tab-sky')).toHaveAttribute('aria-selected', 'true');
   await page.locator('#tab-system').click();
   await expect(page.locator('#tab-system')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#kamera-nord')).toBeDisabled();
+  await expect(page.locator('#camera-north')).toBeDisabled();
 
-  // Die Zeichenfläche enthält nach dem Rendern nicht nur Hintergrund.
+  // The canvas contains more than just background after rendering.
   const drawn = await page.evaluate(() => {
-    const canvas = document.getElementById('szene') as HTMLCanvasElement;
+    const canvas = document.getElementById('scene') as HTMLCanvasElement;
     return canvas.width > 0 && canvas.height > 0;
   });
   expect(drawn).toBe(true);
 
-  await page.locator('#tab-himmel').click();
-  await expect(page.locator('#kamera-nord')).toBeEnabled();
+  await page.locator('#tab-sky').click();
+  await expect(page.locator('#camera-north')).toBeEnabled();
 });
 
-test('Kamerasteuerung ist per Tastatur erreichbar', async ({ page }) => {
-  await page.locator('#kamera-reset').focus();
-  await expect(page.locator('#kamera-reset')).toBeFocused();
+test('camera controls are reachable by keyboard', async ({ page }) => {
+  await page.locator('#camera-reset').focus();
+  await expect(page.locator('#camera-reset')).toBeFocused();
   await page.keyboard.press('Enter');
   await page.keyboard.press('Tab');
-  await expect(page.locator('#kamera-nord')).toBeFocused();
+  await expect(page.locator('#camera-north')).toBeFocused();
 });
 
-test('nicht existierende Ortszeit am Sommerzeitbeginn wird erklärt', async ({ page }) => {
-  // Deutschland stellt am 29.03.2026 um 02:00 auf 03:00 vor: 02:30 gibt es nicht.
-  await page.locator('#zeit-eingabe').fill('2026-03-29T02:30');
-  await page.locator('#zeit-eingabe').dispatchEvent('change');
-  await expect(page.locator('#zeit-hinweis')).toBeVisible();
-  await expect(page.locator('#zeit-hinweis')).toContainText('gibt es nicht');
-  await expect(page.locator('#zeit-anzeige')).toContainText('03:30');
+test('a nonexistent local time at the start of daylight saving is explained', async ({ page }) => {
+  // Germany springs forward on 2026-03-29 at 02:00 to 03:00: 02:30 does not exist.
+  await page.locator('#time-input').fill('2026-03-29T02:30');
+  await page.locator('#time-input').dispatchEvent('change');
+  await expect(page.locator('#time-warning')).toBeVisible();
+  await expect(page.locator('#time-warning')).toContainText('does not exist');
+  await expect(page.locator('#time-display')).toContainText('03:30');
 });
 
-test('doppeldeutige Ortszeit am Sommerzeitende lässt beide Stunden wählen', async ({ page }) => {
-  // Deutschland stellt am 25.10.2026 um 03:00 auf 02:00 zurück: 02:30 gibt es zweimal.
-  await page.locator('#zeit-eingabe').fill('2026-10-25T02:30');
-  await page.locator('#zeit-eingabe').dispatchEvent('change');
-  await expect(page.locator('#zeit-doppeldeutig')).toBeVisible();
-  await expect(page.locator('#dst-frueh')).toContainText('+02:00');
-  await expect(page.locator('#dst-spaet')).toContainText('+01:00');
+test('an ambiguous local time at the end of daylight saving offers both hours', async ({ page }) => {
+  // Germany falls back on 2026-10-25 at 03:00 to 02:00: 02:30 occurs twice.
+  await page.locator('#time-input').fill('2026-10-25T02:30');
+  await page.locator('#time-input').dispatchEvent('change');
+  await expect(page.locator('#time-ambiguous')).toBeVisible();
+  await expect(page.locator('#dst-earlier')).toContainText('+02:00');
+  await expect(page.locator('#dst-later')).toContainText('+01:00');
 
-  const early = await readValue(page, 'Sonne', 'Höhe');
-  await page.locator('#dst-spaet').click();
-  const late = await readValue(page, 'Sonne', 'Höhe');
+  const early = await readValue(page, 'Sun', 'Altitude');
+  await page.locator('#dst-later').click();
+  const late = await readValue(page, 'Sun', 'Altitude');
   expect(early).not.toBe(late);
 });
 
-test('Mondphase kennt die Orientierung des jeweiligen Beobachters', async ({ page }) => {
+test('the Moon phase indicator knows each observer\'s orientation', async ({ page }) => {
   await setInstant(page, '2026-04-25T20:00:00Z');
-  const hamburg = await page.locator('#phasen-anzeige svg g').getAttribute('transform');
+  const hamburg = await page.locator('#phase-indicator svg g').getAttribute('transform');
   await page.getByRole('button', { name: 'Waterloo' }).click();
-  const waterloo = await page.locator('#phasen-anzeige svg g').getAttribute('transform');
+  const waterloo = await page.locator('#phase-indicator svg g').getAttribute('transform');
   expect(hamburg).not.toBe(waterloo);
-  // Der beleuchtete Anteil hängt nicht vom Ort ab.
-  await expect(page.locator('#phasen-anzeige')).toContainText('beleuchtet');
+  // The illuminated fraction does not depend on the location.
+  await expect(page.locator('#phase-indicator')).toContainText('illuminated');
 });
 
-test('mobiles Layout stapelt Ansicht und Bedienfeld', async ({ page }) => {
+test('the mobile layout stacks the view and the control panel', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const stage = await page.locator('#hauptansicht').boundingBox();
+  const stage = await page.locator('#main-view').boundingBox();
   const panel = await page.locator('.panel').boundingBox();
   expect(stage!.y + stage!.height).toBeLessThanOrEqual(panel!.y + 1);
   expect(stage!.width).toBeLessThanOrEqual(390);
 });
 
-test('beleuchtete Fläche der Mondscheibe entspricht dem berechneten Anteil', async ({ page }) => {
-  // Der gezeichnete Pfad wird auf eine Leinwand gerastert und ausgezählt.
-  // Erwartet wird der Anteil, den Astronomy Engine liefert.
+test('the drawn illuminated Moon area matches the calculated fraction', async ({ page }) => {
+  // The drawn path is rasterised onto a canvas and its pixels counted.
+  // The expected value is the fraction reported by Astronomy Engine.
   for (const iso of ['2026-01-03T10:03:00Z', '2026-01-11T12:00:00Z', '2026-01-26T12:00:00Z', '2026-02-01T12:00:00Z']) {
     await setInstant(page, iso);
     const measured = await page.evaluate(() => {
-      const path = document.querySelector('#phasen-anzeige svg path.phase-indicator__lit')!;
+      const path = document.querySelector('#phase-indicator svg path.phase-indicator__lit')!;
       const d = path.getAttribute('d')!;
       const size = 120;
       const canvas = document.createElement('canvas');
@@ -177,7 +177,7 @@ test('beleuchtete Fläche der Mondscheibe entspricht dem berechneten Anteil', as
       return lit / (Math.PI * radius * radius);
     });
     const expected = Number(
-      (await readValue(page, 'Mondphase', 'Beleuchtet')).replace(',', '.').replace(' %', '')
+      (await readValue(page, 'Moon phase', 'Illuminated')).replace(' %', '')
     ) / 100;
     expect(Math.abs(measured - expected)).toBeLessThan(0.02);
   }

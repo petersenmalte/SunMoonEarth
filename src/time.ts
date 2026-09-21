@@ -1,24 +1,24 @@
 /**
- * Zeitmodell.
+ * Time model.
  *
- * Alle Zeitzonen- und Sommerzeit-Rechnungen laufen ueber Temporal
- * (@js-temporal/polyfill, TC39-Vorschlag Stage 3). Dieses Modul enthaelt
- * keine eigene Zeitzonen-Arithmetik: Temporal kennt die IANA-Datenbank und
- * loest Sommerzeit-Uebergaenge ueber die Option `disambiguation` auf.
+ * All time zone and daylight saving calculations go through Temporal
+ * (@js-temporal/polyfill, TC39 proposal, Stage 3). This module contains no
+ * time zone arithmetic of its own: Temporal knows the IANA database and
+ * resolves daylight saving transitions via the `disambiguation` option.
  */
 
 import { Temporal } from '@js-temporal/polyfill';
 
-/** Wie eine eingegebene Ortszeit auf einen Zeitpunkt abgebildet wurde. */
-export type ResolutionKind = 'eindeutig' | 'doppeldeutig' | 'nicht-existent';
+/** How an entered local time was mapped to an instant. */
+export type ResolutionKind = 'unambiguous' | 'ambiguous' | 'nonexistent';
 
 export interface ResolvedLocalTime {
   readonly instant: Temporal.Instant;
   readonly zoned: Temporal.ZonedDateTime;
   readonly kind: ResolutionKind;
   /**
-   * Bei 'doppeldeutig' die beiden moeglichen Zeitpunkte (frueher/spaeter),
-   * sonst undefined.
+   * For 'ambiguous', the two possible instants (earlier/later); otherwise
+   * undefined.
    */
   readonly alternatives?: {
     readonly earlier: Temporal.ZonedDateTime;
@@ -27,18 +27,17 @@ export interface ResolvedLocalTime {
 }
 
 /**
- * Bildet eine lokale Wanduhrzeit auf einen absoluten Zeitpunkt ab und macht
- * Sommerzeit-Sonderfaelle explizit sichtbar.
+ * Maps a local wall-clock time to an absolute instant and makes daylight
+ * saving edge cases explicit.
  *
- * - Normalfall: genau ein Zeitpunkt.
- * - Rueckstellung (Herbst): die Wanduhrzeit existiert zweimal. Temporal liefert
- *   mit 'earlier' bzw. 'later' beide Zeitpunkte; `preference` waehlt einen aus.
- * - Vorstellung (Fruehjahr): die Wanduhrzeit existiert nicht. Temporal
- *   verschiebt sie mit 'compatible' um die Laenge der Luecke nach vorn.
+ * - Normal case: exactly one instant.
+ * - Fall back: the wall-clock time exists twice. Temporal returns both
+ *   instants via 'earlier' and 'later'; `preference` picks one.
+ * - Spring forward: the wall-clock time does not exist. Temporal shifts it
+ *   forward by the length of the gap using 'compatible'.
  *
- * Unterschieden werden die beiden Faelle daran, ob die von Temporal gelieferte
- * Zeit die eingegebene Wanduhrzeit noch traegt: bei einer Luecke tut sie das
- * nicht.
+ * The two cases are told apart by whether the time Temporal returns still
+ * carries the entered wall-clock time: for a gap it does not.
  */
 export function resolveLocalTime(
   local: Temporal.PlainDateTime,
@@ -47,7 +46,7 @@ export function resolveLocalTime(
 ): ResolvedLocalTime {
   try {
     const zoned = local.toZonedDateTime(timeZone, { disambiguation: 'reject' });
-    return { instant: zoned.toInstant(), zoned, kind: 'eindeutig' };
+    return { instant: zoned.toInstant(), zoned, kind: 'unambiguous' };
   } catch (error) {
     if (!(error instanceof RangeError)) throw error;
   }
@@ -60,13 +59,13 @@ export function resolveLocalTime(
     return {
       instant: chosen.toInstant(),
       zoned: chosen,
-      kind: 'doppeldeutig',
+      kind: 'ambiguous',
       alternatives: { earlier, later }
     };
   }
 
   const shifted = local.toZonedDateTime(timeZone, { disambiguation: 'compatible' });
-  return { instant: shifted.toInstant(), zoned: shifted, kind: 'nicht-existent' };
+  return { instant: shifted.toInstant(), zoned: shifted, kind: 'nonexistent' };
 }
 
 export function nowInstant(): Temporal.Instant {
@@ -81,20 +80,20 @@ export function instantToDate(instant: Temporal.Instant): Date {
   return new Date(instant.epochMilliseconds);
 }
 
-/** Datum und Uhrzeit eines Zeitpunkts in der Zeitzone des Ortes. */
+/** Date and time of an instant in the location's time zone. */
 export function formatDateTimeParts(
   instant: Temporal.Instant,
   timeZone: string
 ): { date: string; time: string; zone: string; offset: string } {
   const zoned = zonedAt(instant, timeZone);
-  const date = new Intl.DateTimeFormat('de-DE', {
+  const date = new Intl.DateTimeFormat('en-GB', {
     weekday: 'short',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     timeZone
   }).format(new Date(instant.epochMilliseconds));
-  const time = new Intl.DateTimeFormat('de-DE', {
+  const time = new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -102,19 +101,19 @@ export function formatDateTimeParts(
     hour12: false
   }).format(new Date(instant.epochMilliseconds));
   const zoneName =
-    new Intl.DateTimeFormat('de-DE', { timeZone, timeZoneName: 'short' })
+    new Intl.DateTimeFormat('en-GB', { timeZone, timeZoneName: 'short' })
       .formatToParts(new Date(instant.epochMilliseconds))
       .find((part) => part.type === 'timeZoneName')?.value ?? timeZone;
   return { date, time, zone: zoneName, offset: zoned.offset };
 }
 
-/** Wert fuer ein <input type="datetime-local"> in der Zeitzone des Ortes. */
+/** Value for an <input type="datetime-local"> in the location's time zone. */
 export function toDateTimeLocalValue(instant: Temporal.Instant, timeZone: string): string {
   const zoned = zonedAt(instant, timeZone);
   return zoned.toPlainDateTime().toString({ smallestUnit: 'minute' });
 }
 
-/** Liest einen <input type="datetime-local">-Wert als lokale Wanduhrzeit. */
+/** Reads an <input type="datetime-local"> value as a local wall-clock time. */
 export function parseDateTimeLocalValue(value: string): Temporal.PlainDateTime | null {
   if (!value) return null;
   try {

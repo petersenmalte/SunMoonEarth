@@ -24,11 +24,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Typprüfung und Build
+      - name: Typecheck and build
         run: npm run build
-      # Voraussetzung: unter Settings -> Pages ist als Quelle "GitHub Actions"
-      # eingestellt. Das Einschalten per enablement schlaegt fehl, weil der
-      # GITHUB_TOKEN eines Arbeitsablaufs keine Pages-Site anlegen darf.
+      # Prerequisite: Settings -> Pages has its source set to "GitHub
+      # Actions". Turning this on via enablement fails, because a
+      # workflow's GITHUB_TOKEN is not allowed to create a Pages site.
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

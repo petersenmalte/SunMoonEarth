@@ -1,190 +1,193 @@
 # SunMoonEarth
 
-Schematische 3D-Darstellung von Sonne, Mond und Erde für zwei Beobachtungsorte:
-**Hamburg** (Deutschland) und **Waterloo** (Ontario, Kanada).
+Schematic 3D visualisation of the Sun, Moon and Earth for two observer
+locations: **Hamburg** (Germany) and **Waterloo** (Ontario, Canada).
 
-Zwei gekoppelte Ansichten zeigen denselben Zeitpunkt und denselben Beobachter:
+Two coordinated views show the same instant and the same observer:
 
-1. **Lokaler Himmel** – Sonne und Mond über der Horizontebene mit N/O/S/W,
-   Azimut- und Höhenpfeilen, Winkelbögen und Gradangaben.
-2. **Erde–Mond–Sonne** – Erde, Mond und Sonne im Raum, mit Tag- und Nachtseite
-   der Erde, beleuchteter und dunkler Mondhälfte, beiden Ortsmarken, der
-   Horizontebene des aktiven Beobachters sowie Elongation und Phasenwinkel.
+1. **Local Sky** – Sun and Moon above the horizon plane with N/E/S/W,
+   azimuth and altitude arrows, angle arcs and degree labels.
+2. **Earth–Moon–Sun** – Earth, Moon and Sun in space, with Earth's day and
+   night side, the Moon's lit and dark half, both location markers, the
+   active observer's horizon plane, and elongation and phase angle.
 
-Die Oberfläche ist deutsch.
+The interface is in English.
 
-## Entwicklung
+## Development
 
-Voraussetzung: Node.js 22 oder neuer.
+Requires Node.js 22 or newer.
 
 ```sh
 npm install
-npm run dev        # Entwicklungsserver
-npm run typecheck  # TypeScript ohne Ausgabe prüfen
-npm run build      # Typprüfung und Produktionsbündel nach dist/
-npm run preview    # dist/ lokal unter /SunMoonEarth/ ausliefern
-npm test           # Playwright-Prüfungen gegen die gebaute Anwendung
+npm run dev        # development server
+npm run typecheck  # check TypeScript without emitting output
+npm run build      # typecheck and production bundle into dist/
+npm run preview    # serve dist/ locally under /SunMoonEarth/
+npm test           # Playwright checks against the built application
 ```
 
-Die Prüfungen starten `vite preview` selbst. Sie brauchen einen Chromium-Build;
-ist keiner über `npx playwright install chromium` vorhanden, lässt sich mit
-`CHROMIUM_PATH=/pfad/zu/chrome npm test` ein vorhandener Browser verwenden.
+The checks start `vite preview` themselves. They need a Chromium build; if
+none is available via `npx playwright install chromium`, an existing browser
+can be used with `CHROMIUM_PATH=/path/to/chrome npm test`.
 
-## Auslieferung
+## Deployment
 
-Die Anwendung ist eine statische Seite. `.github/workflows/deploy.yml` baut bei
-jedem Push auf `main` und veröffentlicht `dist/` über GitHub Pages unter
+The application is a static site. `.github/workflows/deploy.yml` builds on
+every push to `main` and publishes `dist/` via GitHub Pages at
 `https://petersenmalte.github.io/SunMoonEarth/`.
 
-Der Basispfad steht in `vite.config.ts` und lässt sich ohne Codeänderung über
-die Umgebungsvariable `BASE_PATH` umstellen, etwa `BASE_PATH=/ npm run build`
-für eine Auslieferung im Wurzelverzeichnis einer anderen Domain.
+The base path lives in `vite.config.ts` and can be changed without a code
+change via the `BASE_PATH` environment variable, e.g.
+`BASE_PATH=/ npm run build` for a deployment at the root of a different
+domain.
 
-Damit der Arbeitsablauf greift, muss unter *Settings → Pages* als Quelle
-**GitHub Actions** eingestellt sein.
+For the workflow to take effect, the source under *Settings → Pages* must be
+set to **GitHub Actions**.
 
-## Bibliotheken und Lizenzen
+## Libraries and licenses
 
-| Bibliothek | Version | Lizenz | Aufgabe |
+| Library | Version | License | Role |
 | --- | --- | --- | --- |
-| [Astronomy Engine](https://github.com/cosinekitty/astronomy) | 2.1.19 | MIT | sämtliche astronomischen Größen |
-| [Three.js](https://threejs.org/) | 0.186.0 | MIT | 3D-Darstellung, `OrbitControls` für die Kamera |
-| [@js-temporal/polyfill](https://github.com/js-temporal/temporal-polyfill) | 0.5.1 | ISC | Zeitzonen und Sommerzeit (Temporal, TC39 Stage 3) |
-| [Vite](https://vite.dev/) | 8 | MIT | Entwicklungsserver und Bündelung |
-| [TypeScript](https://www.typescriptlang.org/) | 5.9 | Apache-2.0 | Typprüfung |
-| [Playwright](https://playwright.dev/) | 1.62 | Apache-2.0 | Browser-Prüfungen |
+| [Astronomy Engine](https://github.com/cosinekitty/astronomy) | 2.1.19 | MIT | all astronomical quantities |
+| [Three.js](https://threejs.org/) | 0.186.0 | MIT | 3D rendering, `OrbitControls` for the camera |
+| [@js-temporal/polyfill](https://github.com/js-temporal/temporal-polyfill) | 0.5.1 | ISC | time zones and daylight saving (Temporal, TC39 Stage 3) |
+| [Vite](https://vite.dev/) | 8 | MIT | development server and bundling |
+| [TypeScript](https://www.typescriptlang.org/) | 5.9 | Apache-2.0 | type checking |
+| [Playwright](https://playwright.dev/) | 1.62 | Apache-2.0 | browser checks |
 
-Dieses Projekt steht unter der MIT-Lizenz (siehe `LICENSE`).
+This project is licensed under the MIT license (see `LICENSE`).
 
-## Woher die Zahlen kommen
+## Where the numbers come from
 
-Es sind **keine eigenen astronomischen Algorithmen** im Projekt. Alle Größen
-stammen aus Astronomy Engine (`src/astro.ts`):
+The project contains **no astronomical algorithms of its own**. All
+quantities come from Astronomy Engine (`src/astro.ts`), which implements
+VSOP87 planetary theory for the Sun/Earth and an ELP2000-derived lunar
+theory for the Moon:
 
-| Größe | Aufruf |
+| Quantity | Call |
 | --- | --- |
-| Äquatorkoordinaten von Sonne und Mond | `Equator(body, date, observer, true, true)` |
-| Azimut und Höhe | `Horizon(date, observer, ra, dec, 'normal')` |
-| beleuchteter Anteil, Phasenwinkel | `Illumination(Body.Moon, date)` |
-| Mondphase als Längendifferenz | `MoonPhase(date)` |
-| Elongation Sonne–Erde–Mond | `AngleFromSun(Body.Moon, date)` |
-| geozentrische Richtungen | `GeoVector(Body.Sun, …)`, `GeoMoon(date)` |
-| Ortsvektor eines Beobachters | `ObserverVector(date, observer, false)` |
-| lokaler Zenit im EQJ-System | `Rotation_HOR_EQJ(date, observer)` |
-| Richtung Mond → Sonne im Horizontsystem | `Rotation_EQJ_HOR(date, observer)` |
-| Erdachse | `RotationAxis(Body.Earth, date)` |
-| Auf- und Untergänge | `SearchRiseSet(body, observer, ±1, date, 1)` |
+| Equatorial coordinates of Sun and Moon | `Equator(body, date, observer, true, true)` |
+| Azimuth and altitude | `Horizon(date, observer, ra, dec, 'normal')` |
+| Illuminated fraction, phase angle | `Illumination(Body.Moon, date)` |
+| Moon phase as a longitude difference | `MoonPhase(date)` |
+| Sun–Earth–Moon elongation | `AngleFromSun(Body.Moon, date)` |
+| Geocentric directions | `GeoVector(Body.Sun, …)`, `GeoMoon(date)` |
+| An observer's site vector | `ObserverVector(date, observer, false)` |
+| Local zenith in the EQJ system | `Rotation_HOR_EQJ(date, observer)` |
+| Direction Moon → Sun in the horizon system | `Rotation_EQJ_HOR(date, observer)` |
+| Earth's rotation axis | `RotationAxis(Body.Earth, date)` |
+| Rise and set times | `SearchRiseSet(body, observer, ±1, date, 1)` |
 
-Eigene Rechnung ist auf Zeichen-Geometrie beschränkt: Kugel- in kartesische
-Koordinaten, Winkelbögen, Pfeile, die Basis der Mondscheibe und die Halbellipse
-des Terminators.
+Custom computation is limited to drawing geometry: spherical to Cartesian
+coordinates, angle arcs, arrows, the Moon disc's basis, and the
+terminator's half-ellipse.
 
-### Koordinatensysteme
+### Coordinate systems
 
-* **HOR** (Astronomy Engine): x = Nord, y = West, z = Zenit. Azimut im
-  Uhrzeigersinn ab Nord, Ost = 90°.
-* **EQJ** (Astronomy Engine): x = Frühlingspunkt J2000, z = Himmelsnordpol.
-* **Szene** (Three.js, y oben): Der lokale Himmel bildet HOR ab über
-  (x, y, z) → (−y, z, −x), also x = Ost, y = oben, z = Süd. Die Systemansicht
-  bildet EQJ ab über (x, y, z) → (x, z, −y), also y = Himmelsnordpol. Beide
-  Abbildungen sind drehungserhaltend, Winkel bleiben also erhalten.
-* Längen: Astronomy Engine rechnet in AE, die Anzeige rechnet mit `KM_PER_AU`
-  in Kilometer um. Winkel sind durchgehend Grad.
+* **HOR** (Astronomy Engine): x = north, y = west, z = zenith. Azimuth
+  clockwise from north, east = 90°.
+* **EQJ** (Astronomy Engine): x = J2000 vernal equinox, z = celestial
+  north pole.
+* **Scene** (Three.js, y up): the local sky maps HOR via
+  (x, y, z) → (−y, z, −x), i.e. x = east, y = up, z = south. The system
+  view maps EQJ via (x, y, z) → (x, z, −y), i.e. y = celestial north pole.
+  Both mappings preserve rotation, so angles are preserved.
+* Lengths: Astronomy Engine computes in AU; the display converts to
+  kilometers using `KM_PER_AU`. Angles are in degrees throughout.
 
-### Zeit und Sommerzeit
+### Time and daylight saving
 
-Zeitzonen und Sommerzeit übernimmt Temporal (`src/time.ts`). Eine eingegebene
-Ortszeit wird über `PlainDateTime.toZonedDateTime(zone, { disambiguation })`
-aufgelöst:
+Time zones and daylight saving are handled by Temporal (`src/time.ts`). An
+entered local time is resolved via
+`PlainDateTime.toZonedDateTime(zone, { disambiguation })`:
 
-* **eindeutig** – `disambiguation: 'reject'` liefert einen Zeitpunkt.
-* **doppeldeutig** (Ende der Sommerzeit, die Uhrzeit gibt es zweimal) –
-  `'reject'` wirft, `'earlier'` behält die eingegebene Uhrzeit. Die Oberfläche
-  zeigt beide Stunden mit ihrem UTC-Versatz zur Auswahl.
-* **nicht existent** (Beginn der Sommerzeit, die Uhrzeit wird übersprungen) –
-  `'earlier'` liefert eine andere Uhrzeit als eingegeben. Die Oberfläche
-  erklärt das und zeigt die von `'compatible'` nach vorn verschobene Zeit.
+* **unambiguous** – `disambiguation: 'reject'` returns a single instant.
+* **ambiguous** (end of daylight saving, the time occurs twice) – `'reject'`
+  throws, `'earlier'` keeps the entered time. The UI shows both hours with
+  their UTC offset for the user to choose.
+* **nonexistent** (start of daylight saving, the time is skipped) –
+  `'earlier'` returns a different time than entered. The UI explains this
+  and shows the time shifted forward by `'compatible'`.
 
-Beim Ortswechsel bleibt der absolute Zeitpunkt stehen; nur die angezeigte
-Ortszeit und die Zeitzone ändern sich.
+When switching locations, the absolute instant stays fixed; only the
+displayed local time and time zone change.
 
-## Schematische Vereinfachungen
+## Schematic simplifications
 
-Die Systemansicht ist bewusst **nicht maßstabsgetreu**. Was verkürzt ist und
-was nicht:
+The system view is deliberately **not to scale**. What is shortened and
+what is not:
 
-**Verkürzt (nur Darstellung):**
+**Shortened (display only):**
 
-* Radien von Erde, Mond und Sonne sowie die Abstände Erde–Mond und Erde–Sonne.
-  In Wirklichkeit ist die Sonne rund 390-mal weiter entfernt als der Mond; im
-  Bild ist das Verhältnis knapp 2. Eine Bruchmarke auf der Linie Erde–Sonne
-  weist darauf hin.
-* Die Erde ist als Kugel gezeichnet. Ihre Abplattung geht nur über die
-  Bibliothek in die Rechnung ein.
+* The radii of Earth, Moon and Sun, and the Earth–Moon and Earth–Sun
+  distances. In reality the Sun is about 390 times farther away than the
+  Moon; in the image the ratio is just under 2. A break mark on the
+  Earth–Sun line flags this.
+* Earth is drawn as a sphere. Its oblateness only enters the calculation
+  through the library.
 
-**Nicht verkürzt (aus den berechneten Werten):**
+**Not shortened (from the calculated values):**
 
-* Alle Richtungen: Erde→Sonne, Erde→Mond, Mond→Sonne, die Ortsvektoren beider
-  Städte, die Erdachse und der Zenit des Beobachters.
-* Alle Winkel: Elongation und Phasenwinkel werden zwischen den echten
-  Richtungsvektoren gezeichnet und sind daher im Bild in wahrer Größe messbar,
-  wenn man senkrecht auf die Ebene Sonne–Erde–Mond schaut. Genau so setzt
-  „Ansicht zurücksetzen“ die Kamera.
-* Die Beleuchtung. Erde und Mond bekommen ihre Lichtrichtung als Uniform aus
-  den echten Richtungsvektoren, **nicht** aus der verkürzten Position der
-  Sonne in der Szene. Tag-/Nachtgrenze und Mondphase bleiben dadurch korrekt.
-  Aus demselben Grund zeigt der Pfeil „Richtung Mond → Sonne“ nicht auf das
-  gezeichnete Sonnensymbol, sondern in die echte Richtung; er verläuft nahezu
-  parallel zur Linie Erde–Sonne, weil sich beide Richtungen um höchstens etwa
-  0,15° unterscheiden.
+* All directions: Earth→Sun, Earth→Moon, Moon→Sun, the site vectors of
+  both cities, Earth's axis and the observer's zenith.
+* All angles: elongation and phase angle are drawn between the true
+  direction vectors and are therefore measurable at true size in the image
+  when looking perpendicular to the Sun–Earth–Moon plane. That is exactly
+  how "Reset View" positions the camera.
+* The lighting. Earth and Moon get their lighting direction as a uniform
+  from the true direction vectors, **not** from the Sun's shortened
+  position in the scene. The day/night boundary and the Moon phase
+  therefore stay correct. For the same reason, the "Direction Moon → Sun"
+  arrow does not point at the drawn Sun symbol but in the true direction;
+  it runs nearly parallel to the Earth–Sun line, because the two
+  directions differ by at most about 0.15°.
 
-Weitere Festlegungen:
+Further conventions:
 
-* Mondphasen entstehen ausschließlich durch die Beleuchtung der Mondkugel
-  durch die Sonne. Der Erdschatten spielt keine Rolle; Finsternisse werden
-  nicht dargestellt.
-* Azimut und Höhe enthalten die von Astronomy Engine empfohlene
-  Refraktionskorrektur (`'normal'`). Die Systemansicht zeigt dagegen
-  geozentrische Richtungen ohne Refraktion — ein atmosphärischer Effekt hat
-  dort keine Bedeutung.
-* „Über“ und „unter dem Horizont“ beziehen sich auf den **Mittelpunkt** des
-  Gestirns. `SearchRiseSet` berücksichtigt zusätzlich den Scheibenrand, daher
-  liegen Auf- und Untergangszeiten etwas später beziehungsweise früher.
-* Im lokalen Himmel ist der Mond eine dem Beobachter zugewandte **Scheibe**,
-  keine Kugel. Die Kamera steht außerhalb der Himmelskuppel; eine Kugel würde
-  ihr eine andere Phase zeigen als dem Beobachter im Mittelpunkt.
+* Moon phases arise solely from the Sun illuminating the lunar sphere.
+  Earth's shadow plays no role; eclipses are not depicted.
+* Altitude and azimuth include the refraction correction recommended by
+  Astronomy Engine (`'normal'`). The system view, by contrast, shows
+  geocentric directions without refraction — an atmospheric effect has no
+  meaning there.
+* "Above" and "below the horizon" refer to the **centre** of the body.
+  `SearchRiseSet` additionally accounts for the disc's edge, so rise and
+  set times fall a little later or earlier respectively.
+* In the local sky, the Moon is a **disc** facing the observer, not a
+  sphere. The camera stands outside the sky dome; a sphere would show it a
+  different phase than the observer at the centre sees.
 
-## Beobachtungsorte
+## Observer locations
 
-| Ort | Breite | Länge | Höhe | Zeitzone |
+| Location | Latitude | Longitude | Elevation | Time zone |
 | --- | --- | --- | --- | --- |
-| Hamburg, Deutschland | 53,55028° N | 9,99222° O | 8 m | `Europe/Berlin` |
-| Waterloo, Ontario, Kanada | 43,46667° N | 80,51667° W | 329 m | `America/Toronto` |
+| Hamburg, Germany | 53.55028° N | 9.99222° E | 8 m | `Europe/Berlin` |
+| Waterloo, Ontario, Canada | 43.46667° N | 80.51667° W | 329 m | `America/Toronto` |
 
-Hamburg bezieht sich auf das Rathaus am Rathausmarkt (53°33′01″N, 9°59′32″E),
-Waterloo auf die Stadtkoordinate 43°28′N, 80°31′W.
+Hamburg refers to the City Hall at Rathausmarkt (53°33′01″N, 9°59′32″E),
+Waterloo to the city coordinate 43°28′N, 80°31′W.
 
-## Barrierefreiheit
+## Accessibility
 
-* Alle Bedienelemente sind echte Knöpfe und Eingabefelder und damit über die
-  Tastatur erreichbar; der Fokus ist sichtbar.
-* Alle wichtigen Werte stehen als Text außerhalb der Zeichenfläche unter
-  „Berechnete Werte“; die Zeichenfläche selbst ist `aria-hidden`.
-* Die Mondphasen-Anzeige trägt eine Textbeschreibung und ist von der
-  3D-Kamera unabhängig.
-* Ohne WebGL bleibt die 3D-Szene leer; ein Hinweis erklärt das, und alle
-  Zahlenwerte sowie die Phasenanzeige funktionieren weiter.
+* All controls are real buttons and input fields, and therefore reachable
+  by keyboard; focus is visible.
+* All key values are available as text outside the canvas under
+  "Calculated Values"; the canvas itself is `aria-hidden`.
+* The Moon phase indicator carries a text description and is independent
+  of the 3D camera.
+* Without WebGL the 3D scene stays empty; a notice explains this, and all
+  numeric values and the phase indicator keep working.
 
-## Prüfungen
+## Checks
 
-`npm test` prüft unter anderem:
+`npm test` verifies, among other things:
 
-* Start im Live-Modus mit Hamburg,
-* Voll- und Neumond gegen die Bibliothekswerte,
-* dass ein fester Zeitpunkt stehen bleibt und „Jetzt / Live“ zurückführt,
-* dass ein Ortswechsel den Zeitpunkt behält und die andere Ortszeit zeigt,
-* die Kennzeichnung unter dem Horizont,
-* beide Ansichten, die Kamerabedienung über die Tastatur und das mobile Layout,
-* beide Sommerzeit-Sonderfälle,
-* dass die gezeichnete helle Mondfläche dem berechneten Anteil entspricht
-  (der Pfad wird gerastert und ausgezählt).
+* starting in live mode with Hamburg,
+* full and new moon against the library values,
+* that a fixed moment stays put and "Now / Live" returns to the present,
+* that switching location keeps the instant and shows the other local time,
+* the below-the-horizon indication,
+* both views, keyboard camera controls and the mobile layout,
+* both daylight saving edge cases,
+* that the drawn illuminated Moon area matches the calculated fraction
+  (the path is rasterised and its pixels counted).

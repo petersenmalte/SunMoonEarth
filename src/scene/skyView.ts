@@ -1,9 +1,9 @@
 /**
- * Ansicht "Lokaler Himmel".
+ * "Local Sky" view.
  *
- * Der Beobachter steht im Ursprung. Die Horizontebene ist die XZ-Ebene,
- * der Zenit zeigt nach +Y. Alle Richtungen stammen aus astro.ts; hier wird
- * nur gezeichnet.
+ * The observer stands at the origin. The horizon plane is the XZ plane,
+ * the zenith points toward +Y. All directions come from astro.ts; this
+ * file only draws them.
  */
 
 import * as THREE from 'three';
@@ -26,17 +26,17 @@ import {
 
 const DOME_RADIUS = 1;
 const BODY_RADIUS = 0.055;
-// Sonne und Mond bekommen unterschiedliche Bogenradien, damit sich ihre
-// Beschriftungen nicht ueberlagern.
+// The Sun and Moon get different arc radii so their labels do not
+// overlap.
 const ARC_RADII = {
   sun: { azimuth: 0.36, altitude: 0.55 },
   moon: { azimuth: 0.58, altitude: 0.82 }
 } as const;
 
-/** Himmelsrichtungen: Beschriftung und Richtung im HOR-System. */
+/** Cardinal directions: label and direction in the HOR system. */
 const CARDINALS: ReadonlyArray<{ label: string; hor: { x: number; y: number; z: number } }> = [
   { label: 'N', hor: { x: 1, y: 0, z: 0 } },
-  { label: 'O', hor: { x: 0, y: -1, z: 0 } },
+  { label: 'E', hor: { x: 0, y: -1, z: 0 } },
   { label: 'S', hor: { x: -1, y: 0, z: 0 } },
   { label: 'W', hor: { x: 0, y: 1, z: 0 } }
 ];
@@ -61,8 +61,8 @@ export class SkyView {
     controls.dampingFactor = 0.08;
     controls.minDistance = 1.2;
     controls.maxDistance = 8;
-    // Etwas unter den Horizont schauen zu koennen ist gewollt: nur dort sind
-    // Sonne und Mond bei negativer Hoehe zu sehen.
+    // Being able to look somewhat below the horizon is intentional: that is
+    // the only place the Sun and Moon are visible at negative altitude.
     controls.maxPolarAngle = Math.PI * 0.95;
     controls.target.set(0, 0, 0);
     controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
@@ -70,7 +70,7 @@ export class SkyView {
   }
 
   resetCamera(): void {
-    // Blick von Sued-Suedost leicht von oben auf den Beobachter.
+    // View from south-southeast, slightly above the observer.
     this.camera.position.set(1.5, 1.35, 2.3);
     this.camera.up.set(0, 1, 0);
     this.camera.lookAt(0, 0, 0);
@@ -78,10 +78,10 @@ export class SkyView {
     this.controls?.update();
   }
 
-  /** Kamera exakt suedlich des Beobachters: der Blick geht nach Norden. */
+  /** Camera exactly south of the observer: the view looks north. */
   alignNorth(): void {
     const distance = this.camera.position.length() || 3.2;
-    // Norden liegt bei -Z, also steht die Kamera bei +Z.
+    // North lies at -Z, so the camera stands at +Z.
     this.camera.position.set(0, distance * 0.42, distance * 0.91);
     this.camera.up.set(0, 1, 0);
     this.camera.lookAt(0, 0, 0);
@@ -92,8 +92,8 @@ export class SkyView {
   private buildStatic(): void {
     const staticGroup = new THREE.Group();
 
-    // Horizontebene als Scheibe, leicht durchscheinend, damit Objekte
-    // unter dem Horizont sichtbar bleiben.
+    // Horizon plane as a disc, slightly translucent so objects below the
+    // horizon remain visible.
     const disc = new THREE.Mesh(
       new THREE.CircleGeometry(DOME_RADIUS, 96),
       new THREE.MeshBasicMaterial({
@@ -107,7 +107,7 @@ export class SkyView {
     disc.rotation.x = -Math.PI / 2;
     staticGroup.add(disc);
 
-    // Horizontkreis und Hilfskreise der Kuppel.
+    // Horizon circle and auxiliary circles of the dome.
     staticGroup.add(circle(DOME_RADIUS, PALETTE.horizon, 1, 'xz'));
     for (const altitude of [30, 60]) {
       const r = DOME_RADIUS * Math.cos((altitude * Math.PI) / 180);
@@ -115,14 +115,14 @@ export class SkyView {
       ring.position.y = DOME_RADIUS * Math.sin((altitude * Math.PI) / 180);
       staticGroup.add(ring);
     }
-    // Meridian (Nord-Zenit-Sued) und Vertikalkreis Ost-West.
+    // Meridian (north-zenith-south) and east-west vertical circle.
     staticGroup.add(halfCircle(DOME_RADIUS, PALETTE.horizon, 0.3, 'ns'));
     staticGroup.add(halfCircle(DOME_RADIUS, PALETTE.horizon, 0.3, 'ew'));
 
-    // Zenitrichtung.
+    // Zenith direction.
     const zenith = makeArrow(new THREE.Vector3(0, 1, 0), DOME_RADIUS * 0.98, PALETTE.axis, 0.08);
     staticGroup.add(zenith);
-    const zenithLabel = makeLabel('Zenit', 0.09, { color: '#9aa3a8' });
+    const zenithLabel = makeLabel('Zenith', 0.09, { color: '#9aa3a8' });
     zenithLabel.position.set(0.08, DOME_RADIUS * 1.03, 0);
     staticGroup.add(zenithLabel);
 
@@ -137,7 +137,7 @@ export class SkyView {
       staticGroup.add(label);
     }
 
-    // Beobachterpunkt.
+    // Observer point.
     const observer = new THREE.Mesh(
       new THREE.SphereGeometry(0.022, 16, 12),
       new THREE.MeshBasicMaterial({ color: PALETTE.accentAlt })
@@ -161,47 +161,47 @@ export class SkyView {
     const position = direction.clone().multiplyScalar(DOME_RADIUS);
     const below = !body.aboveHorizon;
     const lineColor = which === 'sun' ? PALETTE.sunlight : PALETTE.moonLit;
-    const label = which === 'sun' ? 'Sonne' : 'Mond';
+    const label = which === 'sun' ? 'Sun' : 'Moon';
     const radii = ARC_RADII[which];
 
     const group = new THREE.Group();
 
-    // Sichtlinie Beobachter -> Gestirn. Unter dem Horizont gestrichelt.
+    // Sightline observer -> body. Dashed below the horizon.
     group.add(makeLine([new THREE.Vector3(), position], lineColor, below ? 0.5 : 0.9, below));
 
-    // Fusspunkt des Azimuts auf der Horizontebene.
+    // Foot point of the azimuth on the horizon plane.
     const groundDirection = new THREE.Vector3(direction.x, 0, direction.z);
     if (groundDirection.lengthSq() > 1e-9) {
       groundDirection.normalize();
       const groundPoint = groundDirection.clone().multiplyScalar(DOME_RADIUS);
 
-      // Azimutpfeil in der Horizontebene.
+      // Azimuth arrow in the horizon plane.
       group.add(makeArrow(groundDirection, DOME_RADIUS * 0.92, PALETTE.accentAlt, 0.09));
 
-      // Lotlinie vom Gestirn auf die Horizontebene.
+      // Plumb line from the body down to the horizon plane.
       group.add(makeLine([position, groundPoint], PALETTE.axis, 0.45, true));
 
-      // Azimutbogen von Nord bis zur Azimutrichtung, in der Horizontebene.
+      // Azimuth arc from north to the azimuth direction, in the horizon plane.
       const north = horizonToScene({ x: 1, y: 0, z: 0 });
       const azimuthArc = makeAngleArcInPlane(north, groundDirection, radii.azimuth, PALETTE.accentAlt);
       group.add(azimuthArc);
-      const azimuthLabel = makeLabel(`${label}: Azimut ${formatDegrees(body.azimuth)}`, 0.082, {
+      const azimuthLabel = makeLabel(`${label}: azimuth ${formatDegrees(body.azimuth)}`, 0.082, {
         color: '#7fc5b8'
       });
       azimuthLabel.position.copy(arcMidpointInPlane(north, groundDirection, radii.azimuth * 1.25));
       azimuthLabel.position.y += 0.05;
       group.add(azimuthLabel);
 
-      // Hoehenbogen vom Fusspunkt zur Gestirnsrichtung.
+      // Altitude arc from the foot point to the body direction.
       group.add(makeAngleArc(groundDirection, direction, radii.altitude, PALETTE.accent));
-      const altitudeLabel = makeLabel(`Höhe ${formatDegrees(body.altitude)}`, 0.082, {
+      const altitudeLabel = makeLabel(`Altitude ${formatDegrees(body.altitude)}`, 0.082, {
         color: below ? '#d09a9a' : '#e2814f'
       });
       altitudeLabel.position.copy(arcMidpoint(groundDirection, direction, radii.altitude * 1.2));
       group.add(altitudeLabel);
     }
 
-    // Koerper.
+    // Body.
     if (which === 'sun') {
       const sun = new THREE.Mesh(
         new THREE.SphereGeometry(BODY_RADIUS, 32, 24),
@@ -209,21 +209,21 @@ export class SkyView {
       );
       sun.position.copy(position);
       group.add(sun);
-      // Strahlenkranz aus kurzen gelben Linien.
+      // Ray crown made of short yellow lines.
       group.add(sunRays(position, BODY_RADIUS, below ? 0.35 : 0.9));
     } else {
-      // Der Mond wird als Scheibe gezeichnet, die dem Beobachter im Ursprung
-      // zugewandt ist - nicht als Kugel. Die Kamera steht ausserhalb der
-      // Himmelskuppel; eine Kugel wuerde ihr eine andere Phase zeigen als dem
-      // Beobachter. Die Scheibe zeigt immer die Phase des Beobachters.
+      // The Moon is drawn as a disc facing the observer at the origin -
+      // not as a sphere. The camera stands outside the sky dome; a sphere
+      // would show it a different phase than the observer sees. The disc
+      // always shows the observer's phase.
       const lightHor = moonToSunInHorizonFrame(state.date, state.location, state.geo.moonToSunUnit);
       const toLight = horizonToScene(lightHor);
       const basis = limbBasis(direction, toLight);
 
-      // Helle Flaeche und Rand liegen in derselben Ebene wie die dunkle
-      // Scheibe. polygonOffset entscheidet die Reihenfolge unabhaengig davon,
-      // von welcher Seite die Kamera schaut - ein Versatz entlang der
-      // Blickrichtung waere nur fuer eine Kameraposition richtig.
+      // The lit area and rim lie in the same plane as the dark disc.
+      // polygonOffset decides the draw order regardless of which side the
+      // camera looks from - an offset along the view direction would only
+      // be correct for one camera position.
       const coplanar = (color: number, offset: number, opacity = 1) =>
         new THREE.MeshBasicMaterial({
           color,
@@ -258,7 +258,7 @@ export class SkyView {
     }
 
     const nameLabel = makeLabel(
-      below ? `${label} (unter dem Horizont)` : label,
+      below ? `${label} (below the horizon)` : label,
       0.095,
       { color: below ? '#c89a9a' : which === 'sun' ? '#f2c94c' : '#efe9dd', bold: true }
     );
@@ -274,7 +274,7 @@ export class SkyView {
   }
 }
 
-/** Kreis in der XZ- oder XY-Ebene. */
+/** Circle in the XZ or XY plane. */
 function circle(radius: number, color: number, opacity: number, plane: 'xz'): THREE.Line {
   const points: THREE.Vector3[] = [];
   for (let i = 0; i <= 128; i += 1) {
@@ -288,7 +288,7 @@ function circle(radius: number, color: number, opacity: number, plane: 'xz'): TH
   return makeLine(points, color, opacity);
 }
 
-/** Halbkreis ueber dem Horizont: Meridian (ns) oder Ost-West-Vertikalkreis (ew). */
+/** Half-circle above the horizon: meridian (ns) or east-west vertical circle (ew). */
 function halfCircle(radius: number, color: number, opacity: number, orientation: 'ns' | 'ew'): THREE.Line {
   const points: THREE.Vector3[] = [];
   for (let i = 0; i <= 64; i += 1) {
@@ -304,7 +304,7 @@ function halfCircle(radius: number, color: number, opacity: number, orientation:
   return makeLine(points, color, opacity);
 }
 
-/** Bogen in der Horizontebene (immer um die Y-Achse, also ueber den Kompass). */
+/** Arc in the horizon plane (always around the Y axis, i.e. over the compass). */
 function makeAngleArcInPlane(from: THREE.Vector3, to: THREE.Vector3, radius: number, color: number): THREE.Line {
   const start = Math.atan2(from.x, -from.z);
   const end = Math.atan2(to.x, -to.z);
@@ -328,7 +328,7 @@ function arcMidpointInPlane(from: THREE.Vector3, to: THREE.Vector3, radius: numb
   return new THREE.Vector3(Math.sin(angle) * radius, 0, -Math.cos(angle) * radius);
 }
 
-/** Kurze gelbe Strahlen um die Sonnenscheibe. */
+/** Short yellow rays around the solar disc. */
 function sunRays(position: THREE.Vector3, radius: number, opacity: number): THREE.Group {
   const group = new THREE.Group();
   const basis = new THREE.Vector3(0, 1, 0);

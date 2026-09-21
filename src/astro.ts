@@ -1,24 +1,25 @@
 /**
- * Astronomische Groessen.
+ * Astronomical quantities.
  *
- * Saemtliche Positionen, Winkel, Phasen und Beleuchtungsgrade stammen aus
- * Astronomy Engine (https://github.com/cosinekitty/astronomy, MIT). Dieses
- * Modul ruft die Bibliothek auf und bringt ihre Ergebnisse in die Form, die
- * die Szenen brauchen. Es enthaelt keine eigenen astronomischen Algorithmen.
+ * All positions, angles, phases and illumination fractions come from
+ * Astronomy Engine (https://github.com/cosinekitty/astronomy, MIT). This
+ * module calls the library and shapes its results for what the scenes need.
+ * It contains no astronomical algorithms of its own.
  *
- * Konventionen laut Astronomy-Engine-Dokumentation:
- *  - Observer(latitude, longitude, height): Grad, Grad, Meter.
- *  - Equator(body, date, observer, ofdate, aberration): ofdate = true liefert
- *    Koordinaten des Datums, wie sie Horizon() erwartet.
- *  - Horizon(date, observer, ra, dec, refraction): azimuth in Grad im
- *    Uhrzeigersinn ab Nord (Ost = 90), altitude in Grad ueber dem Horizont.
- *  - HOR-System: x = Nord, y = West, z = Zenit.
- *  - EQJ-System: x = Fruehlingspunkt J2000, z = Himmelsnordpol J2000.
- *  - GeoVector / GeoMoon / ObserverVector: Vektoren in AE (astronomische
- *    Einheiten), geozentrisch.
- *  - Illumination(body, date).phase_fraction: beleuchteter Anteil 0..1.
- *  - MoonPhase(date): 0 = Neumond, 90 = zunehmendes, 180 = Vollmond,
- *    270 = abnehmendes Halb (Differenz der ekliptikalen Laengen).
+ * Conventions per the Astronomy Engine documentation:
+ *  - Observer(latitude, longitude, height): degrees, degrees, meters.
+ *  - Equator(body, date, observer, ofdate, aberration): ofdate = true
+ *    returns coordinates of date, as expected by Horizon().
+ *  - Horizon(date, observer, ra, dec, refraction): azimuth in degrees
+ *    clockwise from north (east = 90), altitude in degrees above the
+ *    horizon.
+ *  - HOR system: x = north, y = west, z = zenith.
+ *  - EQJ system: x = J2000 vernal equinox, z = J2000 celestial north pole.
+ *  - GeoVector / GeoMoon / ObserverVector: vectors in AU (astronomical
+ *    units), geocentric.
+ *  - Illumination(body, date).phase_fraction: illuminated fraction, 0..1.
+ *  - MoonPhase(date): 0 = new moon, 90 = first quarter, 180 = full moon,
+ *    270 = last quarter (difference of ecliptic longitudes).
  */
 
 import {
@@ -43,7 +44,7 @@ import {
 } from 'astronomy-engine';
 import type { LocationSpec } from './locations';
 
-/** Einfacher 3D-Vektor fuer den Austausch mit den Szenen. */
+/** Simple 3D vector for exchange with the scenes. */
 export interface Vec3 {
   x: number;
   y: number;
@@ -51,43 +52,43 @@ export interface Vec3 {
 }
 
 export interface BodyView {
-  /** Azimut in Grad, im Uhrzeigersinn ab Nord (Ost = 90). */
+  /** Azimuth in degrees, clockwise from north (east = 90). */
   readonly azimuth: number;
-  /** Hoehe ueber dem Horizont in Grad, mit Refraktionskorrektur. */
+  /** Altitude above the horizon in degrees, with refraction correction. */
   readonly altitude: number;
-  /** Rektaszension in Stunden, Koordinaten des Datums. */
+  /** Right ascension in hours, coordinates of date. */
   readonly rightAscension: number;
-  /** Deklination in Grad, Koordinaten des Datums. */
+  /** Declination in degrees, coordinates of date. */
   readonly declination: number;
-  /** Entfernung in Kilometern. */
+  /** Distance in kilometers. */
   readonly distanceKm: number;
-  /** Einheitsvektor im HOR-System (x = Nord, y = West, z = Zenit). */
+  /** Unit vector in the HOR system (x = north, y = west, z = zenith). */
   readonly horizonUnit: Vec3;
   readonly aboveHorizon: boolean;
 }
 
 export interface MoonPhaseInfo {
-  /** Beleuchteter Anteil der sichtbaren Mondscheibe, 0..1. */
+  /** Illuminated fraction of the visible lunar disc, 0..1. */
   readonly illuminatedFraction: number;
-  /** Phasenwinkel Sonne-Mond-Erde in Grad (0 = Vollmond, 180 = Neumond). */
+  /** Sun-Moon-Earth phase angle in degrees (0 = full moon, 180 = new moon). */
   readonly phaseAngle: number;
-  /** Phase als Differenz der ekliptikalen Laengen in Grad, 0..360. */
+  /** Phase as a difference of ecliptic longitudes in degrees, 0..360. */
   readonly phaseLongitude: number;
-  /** Elongation Sonne-Erde-Mond in Grad. */
+  /** Sun-Earth-Moon elongation in degrees. */
   readonly elongation: number;
   readonly waxing: boolean;
-  /** Deutscher Phasenname. */
+  /** Phase name. */
   readonly name: string;
 }
 
 export interface GeocentricView {
-  /** Einheitsvektor Erde -> Sonne im EQJ-System. */
+  /** Unit vector Earth -> Sun in the EQJ system. */
   readonly sunUnit: Vec3;
-  /** Einheitsvektor Erde -> Mond im EQJ-System. */
+  /** Unit vector Earth -> Moon in the EQJ system. */
   readonly moonUnit: Vec3;
-  /** Einheitsvektor Mond -> Sonne im EQJ-System (bestimmt die Mondbeleuchtung). */
+  /** Unit vector Moon -> Sun in the EQJ system (determines Moon lighting). */
   readonly moonToSunUnit: Vec3;
-  /** Einheitsvektor entlang der Erdrotationsachse (Nordpol) im EQJ-System. */
+  /** Unit vector along Earth's rotation axis (north pole) in the EQJ system. */
   readonly earthNorthUnit: Vec3;
   readonly sunDistanceKm: number;
   readonly moonDistanceKm: number;
@@ -105,15 +106,15 @@ export interface AstroState {
   readonly moon: BodyView;
   readonly phase: MoonPhaseInfo;
   readonly geo: GeocentricView;
-  /** Einheitsvektor Erdmittelpunkt -> Beobachter im EQJ-System (Ortsvektor). */
+  /** Unit vector Earth centre -> observer in the EQJ system (site vector). */
   readonly observerUnit: Vec3;
   /**
-   * Lokaler Zenit des Beobachters als Einheitsvektor im EQJ-System.
-   * Auf dem abgeplatteten Erdkoerper weicht er um bis zu ~0,2 Grad vom
-   * Ortsvektor ab; die Drehung liefert Astronomy Engine.
+   * The observer's local zenith as a unit vector in the EQJ system.
+   * On the oblate Earth it deviates by up to ~0.2 degrees from the site
+   * vector; the rotation is supplied by Astronomy Engine.
    */
   readonly observerZenithUnit: Vec3;
-  /** Einheitsvektoren aller Orte im EQJ-System, nach Orts-ID. */
+  /** Unit vectors of all locations in the EQJ system, by location ID. */
   readonly siteUnits: ReadonlyMap<string, Vec3>;
   readonly sunRiseSet: RiseSetInfo;
   readonly moonRiseSet: RiseSetInfo;
@@ -134,9 +135,9 @@ function normalize(v: Vec3): Vec3 {
 }
 
 /**
- * Einheitsvektor aus Azimut und Hoehe im HOR-System.
- * Reine Zeichen-Geometrie: Kugel- in kartesische Koordinaten, mit
- * x = Nord, y = West, z = Zenit und Azimut im Uhrzeigersinn ab Nord.
+ * Unit vector from azimuth and altitude in the HOR system.
+ * Pure drawing geometry: spherical to Cartesian coordinates, with
+ * x = north, y = west, z = zenith and azimuth clockwise from north.
  */
 function horizonUnitVector(azimuthDeg: number, altitudeDeg: number): Vec3 {
   const az = (azimuthDeg * Math.PI) / 180;
@@ -150,8 +151,8 @@ function horizonUnitVector(azimuthDeg: number, altitudeDeg: number): Vec3 {
 }
 
 function bodyView(body: Body, date: Date, observer: Observer): BodyView {
-  // ofdate = true und aberration = true liefern die scheinbaren Koordinaten,
-  // die Horizon() laut Dokumentation erwartet.
+  // ofdate = true and aberration = true return the apparent coordinates
+  // that Horizon() expects, per the documentation.
   const equatorial = Equator(body, date, observer, true, true);
   const horizontal = Horizon(date, observer, equatorial.ra, equatorial.dec, 'normal');
   return {
@@ -166,22 +167,22 @@ function bodyView(body: Body, date: Date, observer: Observer): BodyView {
 }
 
 /**
- * Deutscher Phasenname aus den Bibliothekswerten.
- * phaseLongitude ist die von MoonPhase() gelieferte Laengendifferenz.
+ * Phase name derived from the library's values.
+ * phaseLongitude is the longitude difference returned by MoonPhase().
  */
 function phaseName(phaseLongitude: number, fraction: number): string {
   const percent = fraction * 100;
-  if (percent < 1) return 'Neumond';
-  if (percent > 99) return 'Vollmond';
+  if (percent < 1) return 'New Moon';
+  if (percent > 99) return 'Full Moon';
   const waxing = phaseLongitude < 180;
-  if (Math.abs(percent - 50) <= 2) return waxing ? 'Erstes Viertel' : 'Letztes Viertel';
-  if (percent < 50) return waxing ? 'Zunehmende Sichel' : 'Abnehmende Sichel';
-  return waxing ? 'Zunehmender Mond' : 'Abnehmender Mond';
+  if (Math.abs(percent - 50) <= 2) return waxing ? 'First Quarter' : 'Last Quarter';
+  if (percent < 50) return waxing ? 'Waxing Crescent' : 'Waning Crescent';
+  return waxing ? 'Waxing Gibbous' : 'Waning Gibbous';
 }
 
 function riseSet(body: Body, date: Date, observer: Observer): RiseSetInfo {
   // SearchRiseSet(body, observer, direction, dateStart, limitDays):
-  // direction +1 = Aufgang, -1 = Untergang.
+  // direction +1 = rise, -1 = set.
   const rise = SearchRiseSet(body, observer, +1, date, 1);
   const set = SearchRiseSet(body, observer, -1, date, 1);
   return { rise: rise ? rise.date : null, set: set ? set.date : null };
@@ -210,7 +211,7 @@ export function computeAstroState(
     name: phaseName(phaseLongitude, illumination.phase_fraction)
   };
 
-  // Geozentrische Vektoren in AE, EQJ-Orientierung.
+  // Geocentric vectors in AU, EQJ orientation.
   const sunVector = GeoVector(Body.Sun, date, false);
   const moonVector = GeoMoon(date);
   const moonToSun: Vec3 = {
@@ -249,8 +250,8 @@ export function computeAstroState(
 }
 
 /**
- * Lokaler Zenit des Beobachters, ausgedrueckt im EQJ-System.
- * Die Drehung HOR -> EQJ stammt aus Astronomy Engine.
+ * The observer's local zenith, expressed in the EQJ system.
+ * The HOR -> EQJ rotation comes from Astronomy Engine.
  */
 export function zenithInEqj(date: Date, location: LocationSpec): Vec3 {
   const rotation = Rotation_HOR_EQJ(date, makeObserver(location));
@@ -259,9 +260,9 @@ export function zenithInEqj(date: Date, location: LocationSpec): Vec3 {
 }
 
 /**
- * Richtung Mond -> Sonne, ausgedrueckt im HOR-System des Beobachters.
- * Die Drehung EQJ -> HOR liefert Astronomy Engine; hier wird nichts gerechnet
- * ausser der Anwendung der Matrix auf den Einheitsvektor.
+ * Direction Moon -> Sun, expressed in the observer's HOR system.
+ * The EQJ -> HOR rotation comes from Astronomy Engine; nothing is computed
+ * here beyond applying the matrix to the unit vector.
  */
 export function moonToSunInHorizonFrame(date: Date, location: LocationSpec, moonToSunUnit: Vec3): Vec3 {
   const rotation = Rotation_EQJ_HOR(date, makeObserver(location));

@@ -1,8 +1,7 @@
 /**
- * Anwendungssteuerung: verbindet Zeitmodell, Astronomie, beide 3D-Ansichten
- * und die Bedienelemente. Beide Ansichten, alle Winkel, die Beleuchtung und
- * die Phasenanzeige benutzen immer denselben Beobachter und denselben
- * Zeitpunkt.
+ * Application controller: connects the time model, astronomy calculations,
+ * both 3D views and the UI controls. Both views, all angles, the lighting
+ * and the phase indicator always use the same observer and the same instant.
  */
 
 import * as THREE from 'three';
@@ -27,41 +26,41 @@ type TimeMode = 'live' | 'fixed';
 
 const element = <T extends HTMLElement>(id: string): T => {
   const found = document.getElementById(id);
-  if (!found) throw new Error(`Element fehlt: ${id}`);
+  if (!found) throw new Error(`Missing element: ${id}`);
   return found as T;
 };
 
-const stage = element<HTMLDivElement>('hauptansicht');
-const canvas = element<HTMLCanvasElement>('szene');
+const stage = element<HTMLDivElement>('main-view');
+const canvas = element<HTMLCanvasElement>('scene');
 const fallback = element<HTMLDivElement>('webgl-fallback');
-const hint = element<HTMLParagraphElement>('szene-hinweis');
-const scaleCaption = element<HTMLParagraphElement>('szene-massstab');
-const tabSky = element<HTMLButtonElement>('tab-himmel');
+const hint = element<HTMLParagraphElement>('scene-hint');
+const scaleCaption = element<HTMLParagraphElement>('scene-scale-note');
+const tabSky = element<HTMLButtonElement>('tab-sky');
 const tabSystem = element<HTMLButtonElement>('tab-system');
-const resetButton = element<HTMLButtonElement>('kamera-reset');
-const northButton = element<HTMLButtonElement>('kamera-nord');
-const locationGroup = element<HTMLDivElement>('ort-auswahl');
-const locationDetail = element<HTMLParagraphElement>('ort-detail');
-const modeRow = element<HTMLParagraphElement>('zeit-modus');
-const modeText = element<HTMLSpanElement>('zeit-modus-text');
-const nowButton = element<HTMLButtonElement>('zeit-jetzt');
-const timeInput = element<HTMLInputElement>('zeit-eingabe');
-const timeDisplay = element<HTMLParagraphElement>('zeit-anzeige');
-const timeWarning = element<HTMLParagraphElement>('zeit-hinweis');
-const ambiguousBox = element<HTMLDivElement>('zeit-doppeldeutig');
-const earlierButton = element<HTMLButtonElement>('dst-frueh');
-const laterButton = element<HTMLButtonElement>('dst-spaet');
-const readout = element<HTMLDListElement>('werte');
-const phaseIndicator = new PhaseIndicator(element<HTMLDivElement>('phasen-anzeige'));
+const resetButton = element<HTMLButtonElement>('camera-reset');
+const northButton = element<HTMLButtonElement>('camera-north');
+const locationGroup = element<HTMLDivElement>('location-choice');
+const locationDetail = element<HTMLParagraphElement>('location-detail');
+const modeRow = element<HTMLParagraphElement>('time-mode');
+const modeText = element<HTMLSpanElement>('time-mode-text');
+const nowButton = element<HTMLButtonElement>('time-now');
+const timeInput = element<HTMLInputElement>('time-input');
+const timeDisplay = element<HTMLParagraphElement>('time-display');
+const timeWarning = element<HTMLParagraphElement>('time-warning');
+const ambiguousBox = element<HTMLDivElement>('time-ambiguous');
+const earlierButton = element<HTMLButtonElement>('dst-earlier');
+const laterButton = element<HTMLButtonElement>('dst-later');
+const readout = element<HTMLDListElement>('values');
+const phaseIndicator = new PhaseIndicator(element<HTMLDivElement>('phase-indicator'));
 
 const app = {
   mode: 'live' as TimeMode,
   instant: nowInstant(),
   location: locationById(DEFAULT_LOCATION_ID),
   view: 'sky' as ViewId,
-  /** Welche der beiden Stunden bei einer doppeldeutigen Ortszeit gilt. */
+  /** Which of the two hours applies for an ambiguous local time. */
   dstPreference: 'earlier' as 'earlier' | 'later',
-  /** Zuletzt eingegebene Ortszeit, fuer den Wechsel der DST-Auswahl. */
+  /** Last entered local time, for switching the DST choice. */
   pendingLocal: null as Temporal.PlainDateTime | null
 };
 
@@ -87,7 +86,7 @@ if (!renderer) {
   northButton.disabled = true;
 }
 
-/* ------------------------------------------------------------------ Ortswahl */
+/* ------------------------------------------------------------------ Location */
 
 const locationButtons = new Map<string, HTMLButtonElement>();
 for (const location of LOCATIONS) {
@@ -102,22 +101,22 @@ for (const location of LOCATIONS) {
 }
 
 /**
- * Ortswechsel. Der absolute Zeitpunkt bleibt erhalten; nur die angezeigte
- * Ortszeit und die Zeitzone aendern sich.
+ * Switch the observer location. The absolute instant is preserved; only the
+ * displayed local time and time zone change.
  */
 function selectLocation(location: LocationSpec): void {
   app.location = location;
   for (const [id, button] of locationButtons) {
     button.setAttribute('aria-pressed', String(id === location.id));
   }
-  // Eine bereits gewaehlte Ortszeit gilt weiter als derselbe Zeitpunkt,
-  // also wird sie nicht neu aufgeloest - nur neu angezeigt.
+  // A local time already chosen still refers to the same instant, so it is
+  // not re-resolved here - only redisplayed.
   app.pendingLocal = null;
   hideTimeMessages();
   refresh();
 }
 
-/* ---------------------------------------------------------------- Zeitsteuerung */
+/* -------------------------------------------------------------- Time control */
 
 nowButton.addEventListener('click', () => {
   app.mode = 'live';
@@ -128,10 +127,10 @@ nowButton.addEventListener('click', () => {
 });
 
 /**
- * Wert, den die Anwendung zuletzt selbst in das Eingabefeld geschrieben hat.
- * Ein change-Ereignis mit genau diesem Wert ist keine neue Eingabe - sonst
- * wuerde etwa der Hinweis auf eine nicht existierende Ortszeit sofort wieder
- * verschwinden, weil die korrigierte Zeit zurueckgeschrieben wurde.
+ * Value the application itself last wrote into the input field. A change
+ * event carrying exactly this value is not a new user entry - otherwise a
+ * notice about a nonexistent local time would vanish immediately, because
+ * the corrected time was written back into the field.
  */
 let lastWrittenTimeValue = '';
 
@@ -152,7 +151,7 @@ laterButton.addEventListener('click', () => {
   applyPendingLocalTime();
 });
 
-/** Rechnet die eingegebene Ortszeit ueber Temporal in einen Zeitpunkt um. */
+/** Resolves the entered local time to an instant via Temporal. */
 function applyPendingLocalTime(): void {
   const local = app.pendingLocal;
   if (!local) return;
@@ -160,20 +159,21 @@ function applyPendingLocalTime(): void {
   app.mode = 'fixed';
   app.instant = resolved.instant;
 
-  if (resolved.kind === 'doppeldeutig') {
+  if (resolved.kind === 'ambiguous') {
     ambiguousBox.hidden = false;
     earlierButton.setAttribute('aria-pressed', String(app.dstPreference === 'earlier'));
     laterButton.setAttribute('aria-pressed', String(app.dstPreference === 'later'));
     const alternatives = resolved.alternatives!;
-    earlierButton.textContent = `Erste Stunde (${alternatives.earlier.offset})`;
-    laterButton.textContent = `Zweite Stunde (${alternatives.later.offset})`;
+    earlierButton.textContent = `First hour (${alternatives.earlier.offset})`;
+    laterButton.textContent = `Second hour (${alternatives.later.offset})`;
     timeWarning.hidden = true;
-  } else if (resolved.kind === 'nicht-existent') {
+  } else if (resolved.kind === 'nonexistent') {
     ambiguousBox.hidden = true;
     timeWarning.hidden = false;
     timeWarning.textContent =
-      `Diese Ortszeit gibt es nicht: die Uhr springt am Beginn der Sommerzeit vor. ` +
-      `Gezeigt wird stattdessen ${resolved.zoned.toPlainTime().toString({ smallestUnit: 'minute' })} Uhr (${resolved.zoned.offset}).`;
+      `This local time does not exist: the clock skips forward at the start of daylight ` +
+      `saving time. Showing ${resolved.zoned.toPlainTime().toString({ smallestUnit: 'minute' })} ` +
+      `(${resolved.zoned.offset}) instead.`;
   } else {
     hideTimeMessages();
   }
@@ -185,7 +185,7 @@ function hideTimeMessages(): void {
   ambiguousBox.hidden = true;
 }
 
-/* -------------------------------------------------------------- Ansichtswahl */
+/* -------------------------------------------------------------- View choice */
 
 tabSky.addEventListener('click', () => selectView('sky'));
 tabSystem.addEventListener('click', () => selectView('system'));
@@ -194,9 +194,9 @@ function selectView(view: ViewId): void {
   app.view = view;
   tabSky.setAttribute('aria-selected', String(view === 'sky'));
   tabSystem.setAttribute('aria-selected', String(view === 'system'));
-  stage.setAttribute('aria-labelledby', view === 'sky' ? 'tab-himmel' : 'tab-system');
+  stage.setAttribute('aria-labelledby', view === 'sky' ? 'tab-sky' : 'tab-system');
   northButton.disabled = renderer === null || view !== 'sky';
-  // Der Maßstabs-Hinweis gehört zur schematischen Systemansicht.
+  // The scale note belongs to the schematic system view.
   scaleCaption.hidden = renderer === null || view !== 'system';
   if (skyView.controls) skyView.controls.enabled = view === 'sky';
   if (systemView.controls) systemView.controls.enabled = view === 'system';
@@ -209,7 +209,7 @@ resetButton.addEventListener('click', () => {
 });
 northButton.addEventListener('click', () => skyView.alignNorth());
 
-/* ------------------------------------------------------------------- Ausgabe */
+/* -------------------------------------------------------------------- Output */
 
 function refresh(): void {
   if (app.mode === 'live') app.instant = nowInstant();
@@ -229,14 +229,14 @@ function updateTimeDisplay(): void {
   const parts = formatDateTimeParts(app.instant, app.location.timeZone);
   const live = app.mode === 'live';
   modeRow.classList.toggle('mode--fixed', !live);
-  modeText.textContent = live ? 'Live – aktuelle Zeit' : 'Fester Zeitpunkt';
+  modeText.textContent = live ? 'Live – current time' : 'Fixed moment';
   nowButton.disabled = live;
   timeDisplay.innerHTML =
-    `${app.location.label}, ${app.location.country}<br>${parts.date}<br>${parts.time} Uhr ` +
+    `${app.location.label}, ${app.location.country}<br>${parts.date}<br>${parts.time} ` +
     `(${parts.zone}, UTC${parts.offset})`;
   locationDetail.textContent =
     `${formatCoordinate(app.location.latitude, 'lat')}, ${formatCoordinate(app.location.longitude, 'lon')}, ` +
-    `${app.location.elevation} m ü. NN · ${app.location.timeZone}`;
+    `${app.location.elevation} m above sea level · ${app.location.timeZone}`;
 
   const value = toDateTimeLocalValue(app.instant, app.location.timeZone);
   if (timeInput.value !== value) timeInput.value = value;
@@ -244,54 +244,54 @@ function updateTimeDisplay(): void {
 }
 
 function formatCoordinate(value: number, kind: 'lat' | 'lon'): string {
-  const hemisphere = kind === 'lat' ? (value >= 0 ? 'N' : 'S') : value >= 0 ? 'O' : 'W';
+  const hemisphere = kind === 'lat' ? (value >= 0 ? 'N' : 'S') : value >= 0 ? 'E' : 'W';
   const absolute = Math.abs(value);
   const degrees = Math.floor(absolute);
   const minutes = (absolute - degrees) * 60;
-  return `${degrees}° ${minutes.toFixed(1).replace('.', ',')}′ ${hemisphere}`;
+  return `${degrees}° ${minutes.toFixed(1)}′ ${hemisphere}`;
 }
 
 function degrees(value: number, digits = 1): string {
-  // Verhindert die Ausgabe "-0,0" bei Werten knapp unter null.
+  // Avoids printing "-0.0" for values just below zero.
   const rounded = Number(value.toFixed(digits));
-  return `${(rounded === 0 ? 0 : rounded).toFixed(digits).replace('.', ',')}°`;
+  return `${(rounded === 0 ? 0 : rounded).toFixed(digits)}°`;
 }
 
 function formatClock(date: Date | null, timeZone: string): string {
-  if (!date) return 'kein Ereignis in 24 h';
-  return `${new Intl.DateTimeFormat('de-DE', {
+  if (!date) return 'no event in 24 h';
+  return new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     timeZone,
     hour12: false
-  }).format(date)} Uhr`;
+  }).format(date);
 }
 
 function updateReadout(state: AstroState): void {
   const zone = state.location.timeZone;
   const rows: Array<[string, string, boolean?] | { group: string }> = [
-    { group: 'Sonne' },
-    ['Azimut', degrees(state.sun.azimuth)],
-    ['Höhe', degrees(state.sun.altitude), !state.sun.aboveHorizon],
-    ['Stand', state.sun.aboveHorizon ? 'über dem Horizont' : 'unter dem Horizont', !state.sun.aboveHorizon],
-    ['Aufgang', formatClock(state.sunRiseSet.rise, zone)],
-    ['Untergang', formatClock(state.sunRiseSet.set, zone)],
-    ['Entfernung', `${(state.geo.sunDistanceKm / 1e6).toFixed(2).replace('.', ',')} Mio. km`],
+    { group: 'Sun' },
+    ['Azimuth', degrees(state.sun.azimuth)],
+    ['Altitude', degrees(state.sun.altitude), !state.sun.aboveHorizon],
+    ['Position', state.sun.aboveHorizon ? 'above the horizon' : 'below the horizon', !state.sun.aboveHorizon],
+    ['Rise', formatClock(state.sunRiseSet.rise, zone)],
+    ['Set', formatClock(state.sunRiseSet.set, zone)],
+    ['Distance', `${(state.geo.sunDistanceKm / 1e6).toFixed(2)} million km`],
 
-    { group: 'Mond' },
-    ['Azimut', degrees(state.moon.azimuth)],
-    ['Höhe', degrees(state.moon.altitude), !state.moon.aboveHorizon],
-    ['Stand', state.moon.aboveHorizon ? 'über dem Horizont' : 'unter dem Horizont', !state.moon.aboveHorizon],
-    ['Aufgang', formatClock(state.moonRiseSet.rise, zone)],
-    ['Untergang', formatClock(state.moonRiseSet.set, zone)],
-    ['Entfernung', `${Math.round(state.geo.moonDistanceKm).toLocaleString('de-DE')} km`],
+    { group: 'Moon' },
+    ['Azimuth', degrees(state.moon.azimuth)],
+    ['Altitude', degrees(state.moon.altitude), !state.moon.aboveHorizon],
+    ['Position', state.moon.aboveHorizon ? 'above the horizon' : 'below the horizon', !state.moon.aboveHorizon],
+    ['Rise', formatClock(state.moonRiseSet.rise, zone)],
+    ['Set', formatClock(state.moonRiseSet.set, zone)],
+    ['Distance', `${Math.round(state.geo.moonDistanceKm).toLocaleString('en-GB')} km`],
 
-    { group: 'Mondphase' },
+    { group: 'Moon phase' },
     ['Phase', state.phase.name],
-    ['Beleuchtet', `${(state.phase.illuminatedFraction * 100).toFixed(1).replace('.', ',')} %`],
-    ['Phasenwinkel', degrees(state.phase.phaseAngle)],
+    ['Illuminated', `${(state.phase.illuminatedFraction * 100).toFixed(1)} %`],
+    ['Phase angle', degrees(state.phase.phaseAngle)],
     ['Elongation', degrees(state.phase.elongation)],
-    ['Phasenlänge', degrees(state.phase.phaseLongitude)]
+    ['Phase longitude', degrees(state.phase.phaseLongitude)]
   ];
 
   readout.innerHTML = rows
@@ -303,7 +303,7 @@ function updateReadout(state: AstroState): void {
     .join('');
 }
 
-/* ------------------------------------------------------------------ Rendering */
+/* ---------------------------------------------------------------- Rendering */
 
 function resize(): void {
   if (!renderer) return;
@@ -315,7 +315,7 @@ function resize(): void {
     view.camera.aspect = width / height;
     view.camera.updateProjectionMatrix();
   }
-  // Das Seitenverhaeltnis bestimmt die Einpassung der Systemansicht mit.
+  // The aspect ratio also determines how the system view is framed.
   systemView.refit();
 }
 
@@ -335,7 +335,7 @@ resize();
 refresh();
 if (renderer) animate();
 
-// Live-Modus: einmal pro Sekunde neu rechnen.
+// Live mode: recompute once per second.
 window.setInterval(() => {
   if (app.mode === 'live') refresh();
 }, 1000);
@@ -351,7 +351,7 @@ declare global {
   }
 }
 
-// Kleine Testschnittstelle fuer die automatisierten Pruefungen.
+// Small test interface for the automated checks.
 window.__sunMoonEarth = {
   state: () => computeAstroState(instantToDate(app.instant), app.location, LOCATIONS),
   setInstant: (iso: string) => {

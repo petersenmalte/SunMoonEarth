@@ -1,15 +1,15 @@
 /**
- * Ansicht "Erde - Mond - Sonne".
+ * "Earth - Moon - Sun" view.
  *
- * Schematische Szene: Groessen und Abstaende sind stark verkuerzt, die
- * Richtungen und Winkel dagegen nicht. Alle Richtungen sind die von
- * Astronomy Engine berechneten Einheitsvektoren im EQJ-System; nur ihre
- * Laengen werden fuer die Darstellung skaliert.
+ * Schematic scene: sizes and distances are strongly shortened, but
+ * directions and angles are not. All directions are the unit vectors
+ * computed by Astronomy Engine in the EQJ system; only their lengths are
+ * scaled for display.
  *
- * Beleuchtung: Erde und Mond bekommen ihre Lichtrichtung als Uniform aus den
- * echten Richtungsvektoren (Erde -> Sonne bzw. Mond -> Sonne). Sie wird nicht
- * aus den verkuerzten Szenenpositionen abgeleitet, damit Tag-/Nachtgrenze und
- * Mondphase korrekt bleiben.
+ * Lighting: Earth and Moon get their lighting direction as a uniform from
+ * the true direction vectors (Earth -> Sun and Moon -> Sun respectively).
+ * It is not derived from the shortened scene positions, so the day/night
+ * boundary and the Moon phase stay correct.
  */
 
 import * as THREE from 'three';
@@ -35,7 +35,7 @@ const SUN_RADIUS = 0.46;
 const MOON_DISTANCE = 2.7;
 const SUN_DISTANCE = 5.0;
 const HORIZON_RADIUS = 0.34;
-/** Schrifthoehen in Weltmasseinheiten; die Szene ist rund 10 Einheiten breit. */
+/** Font heights in world units; the scene is roughly 10 units wide. */
 const LABEL = { body: 0.42, annotation: 0.32, small: 0.26 } as const;
 
 export class SystemView {
@@ -43,20 +43,20 @@ export class SystemView {
   readonly camera: THREE.PerspectiveCamera;
   controls: OrbitControls | null = null;
 
-  /** Wegwerf-Objekte; werden bei jeder Aktualisierung neu aufgebaut. */
+  /** Throwaway objects; rebuilt on every update. */
   private readonly dynamic = new THREE.Group();
   /**
-   * Dauerhafte Objekte. Sie liegen bewusst ausserhalb von `dynamic`, damit
-   * ihre Geometrie und ihr Material beim Aufraeumen nicht mit freigegeben
-   * werden - sie werden nur neu positioniert.
+   * Persistent objects. They deliberately live outside `dynamic` so their
+   * geometry and material are not disposed of during cleanup - they are
+   * only repositioned.
    */
   private readonly persistent = new THREE.Group();
   private readonly earth = makeTwoToneSphere(EARTH_RADIUS, PALETTE.earthDay, PALETTE.earthNight, 72);
   private readonly moon = makeTwoToneSphere(MOON_RADIUS, PALETTE.moonLit, PALETTE.moonDark, 48);
   private lastState: AstroState | null = null;
-  /** Wurde die Kamera schon auf einen echten Zustand eingepasst? */
+  /** Has the camera already been framed to a real state? */
   private framed = false;
-  /** Hat der Benutzer die Kamera selbst bewegt? Dann nicht mehr nachfuehren. */
+  /** Has the user moved the camera themselves? Then stop auto-framing. */
   private userMoved = false;
 
   constructor() {
@@ -82,8 +82,8 @@ export class SystemView {
   }
 
   /**
-   * Blick senkrecht auf die Ebene Sonne-Erde-Mond. In dieser Richtung
-   * erscheint der Elongationswinkel in wahrer Groesse.
+   * View perpendicular to the Sun-Earth-Moon plane. In this direction the
+   * elongation angle appears at its true size.
    */
   resetCamera(): void {
     this.userMoved = false;
@@ -94,36 +94,36 @@ export class SystemView {
       const cross = new THREE.Vector3().crossVectors(sun, moon);
       if (cross.lengthSq() > 1e-4) {
         normal = cross.normalize();
-        // Immer von der Nordseite der Ebene schauen, damit der Blick nicht
-        // je nach Mondstellung umspringt.
+        // Always look from the north side of the plane, so the view does
+        // not flip depending on the Moon's position.
         if (normal.y < 0) normal.negate();
       }
     }
     const { target, radius } = this.boundingSphere();
-    // Sichtfeld in der schmaleren Bildrichtung, damit auch hochkant alles passt.
+    // Field of view in the narrower image direction, so everything fits in portrait too.
     const verticalFov = (this.camera.fov * Math.PI) / 180;
     const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(this.camera.aspect, 0.2));
     const distance = radius / Math.sin(Math.min(verticalFov, horizontalFov) / 2);
 
     this.camera.position.copy(target).addScaledVector(normal, distance);
     this.camera.up.set(0, 1, 0);
-    // Bei fast senkrechter Kamera ist "oben" mehrdeutig; Bezugsachse wechseln.
+    // With a near-vertical camera "up" is ambiguous; switch the reference axis.
     if (Math.abs(normal.y) > 0.98) this.camera.up.set(0, 0, -1);
     this.camera.lookAt(target);
     this.camera.far = distance + radius * 4;
     this.camera.updateProjectionMatrix();
     this.controls?.target.copy(target);
     this.controls?.update();
-    // Ohne Zustand ist das nur eine Startaufstellung, keine echte Einpassung.
+    // Without a state this is only an initial position, not a real framing.
     this.framed = this.lastState !== null;
   }
 
-  /** Nach einer Groessenaenderung neu einpassen, solange niemand gedreht hat. */
+  /** Re-frame after a resize, as long as no one has rotated the view. */
   refit(): void {
     if (!this.userMoved) this.resetCamera();
   }
 
-  /** Kugel, die Erde, Mond, Sonne und ihre Beschriftungen einschliesst. */
+  /** Sphere enclosing Earth, Moon, Sun and their labels. */
   private boundingSphere(): { target: THREE.Vector3; radius: number } {
     if (!this.lastState) return { target: new THREE.Vector3(), radius: SUN_DISTANCE * 0.75 };
     const moon = equatorialToScene(this.lastState.geo.moonUnit).multiplyScalar(MOON_DISTANCE);
@@ -137,7 +137,7 @@ export class SystemView {
       target.distanceTo(moon) + MOON_RADIUS,
       target.distanceTo(sun) + SUN_RADIUS
     );
-    // Zuschlag fuer Beschriftungen und Winkelboegen.
+    // Margin for labels and angle arcs.
     return { target, radius: reach + 1.0 };
   }
 
@@ -169,7 +169,7 @@ export class SystemView {
     this.earth.setLightDirection(sunDirection);
     this.dynamic.add(earthMesh);
 
-    // Erdachse.
+    // Earth's axis.
     this.dynamic.add(
       makeLine(
         [
@@ -180,15 +180,15 @@ export class SystemView {
         0.8
       )
     );
-    const axisLabel = makeLabel('Erdachse', LABEL.small, { color: '#9aa3a8' });
-    // Am Suedende: beide Orte liegen auf der Nordhalbkugel.
+    const axisLabel = makeLabel("Earth's axis", LABEL.small, { color: '#9aa3a8' });
+    // At the south end: both locations lie in the northern hemisphere.
     axisLabel.position.copy(northDirection.clone().multiplyScalar(-EARTH_RADIUS * 2.15));
     this.dynamic.add(axisLabel);
 
-    // Aequator als Kreis senkrecht zur Erdachse.
+    // Equator as a circle perpendicular to Earth's axis.
     this.dynamic.add(circleAroundAxis(northDirection, EARTH_RADIUS * 1.004, PALETTE.axis, 0.45));
 
-    // Ortsmarken.
+    // Location markers.
     for (const site of LOCATIONS) {
       const unit = state.siteUnits.get(site.id);
       if (!unit) continue;
@@ -201,12 +201,12 @@ export class SystemView {
       marker.position.copy(position);
       this.dynamic.add(marker);
 
-      const label = makeLabel(active ? `${site.label} (Beobachter)` : site.label, active ? LABEL.annotation : LABEL.small, {
+      const label = makeLabel(active ? `${site.label} (Observer)` : site.label, active ? LABEL.annotation : LABEL.small, {
         color: active ? '#e2814f' : '#b0a894',
         bold: active
       });
-      // Der aktive Ort wird entlang seiner Zenitrichtung nach aussen gesetzt,
-      // oberhalb des Horizontpfeils; der zweite Ort bleibt dicht an der Marke.
+      // The active location is placed outward along its zenith direction,
+      // above the horizon arrow; the other location stays close to its marker.
       if (active) {
         const zenith = equatorialToScene(state.observerZenithUnit).normalize();
         label.position.copy(position).addScaledVector(zenith, 0.92);
@@ -221,7 +221,7 @@ export class SystemView {
     }
   }
 
-  /** Horizontebene des Beobachters: Scheibe senkrecht zu seinem Zenit. */
+  /** The observer's horizon plane: a disc perpendicular to their zenith. */
   private addHorizonPlane(zenithUnit: Vec3, position: THREE.Vector3): void {
     const zenith = equatorialToScene(zenithUnit).normalize();
     const disc = new THREE.Mesh(
@@ -243,10 +243,10 @@ export class SystemView {
     this.dynamic.add(rim);
 
     this.dynamic.add(makeArrow(zenith, 0.5, PALETTE.accent, 0.1, position.clone()));
-    // Seitlich versetzt, damit der Ortsname darueber frei bleibt.
+    // Offset sideways so the location name above it stays clear.
     const sideways = Math.abs(zenith.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
     const offset = new THREE.Vector3().crossVectors(zenith, sideways).normalize();
-    const label = makeLabel('Horizontebene', LABEL.small, { color: '#e2814f' });
+    const label = makeLabel('Horizon plane', LABEL.small, { color: '#e2814f' });
     label.position.copy(position).addScaledVector(zenith, 0.08).addScaledVector(offset, HORIZON_RADIUS + 0.62);
     this.dynamic.add(label);
   }
@@ -257,7 +257,7 @@ export class SystemView {
     this.moon.setLightDirection(moonToSun);
     this.dynamic.add(moonMesh);
 
-    const label = makeLabel('Mond', LABEL.body, { color: '#efe9dd', bold: true });
+    const label = makeLabel('Moon', LABEL.body, { color: '#efe9dd', bold: true });
     label.position.copy(moonPosition.clone().add(new THREE.Vector3(0, MOON_RADIUS + 0.42, 0)));
     this.dynamic.add(label);
   }
@@ -270,7 +270,7 @@ export class SystemView {
     sun.position.copy(sunPosition);
     this.dynamic.add(sun);
 
-    // Strahlenkranz.
+    // Ray crown.
     const basis = Math.abs(sunDirection.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
     const tangentA = new THREE.Vector3().crossVectors(sunDirection, basis).normalize();
     const tangentB = new THREE.Vector3().crossVectors(sunDirection, tangentA).normalize();
@@ -292,7 +292,7 @@ export class SystemView {
       );
     }
 
-    const label = makeLabel('Sonne', LABEL.body, { color: '#f2c94c', bold: true });
+    const label = makeLabel('Sun', LABEL.body, { color: '#f2c94c', bold: true });
     label.position.copy(sunPosition.clone().add(new THREE.Vector3(0, SUN_RADIUS + 0.34, 0)));
     this.dynamic.add(label);
   }
@@ -303,19 +303,19 @@ export class SystemView {
     moonPosition: THREE.Vector3,
     moonToSun: THREE.Vector3
   ): void {
-    // Erde -> Sonne: zeigt genau auf das Sonnensymbol, weil beide dieselbe
-    // berechnete Richtung benutzen.
+    // Earth -> Sun: points exactly at the Sun symbol, because both use the
+    // same computed direction.
     this.dynamic.add(makeArrow(sunDirection, SUN_DISTANCE - SUN_RADIUS, PALETTE.sunlight, 0.22));
-    // Bruchmarke: der Abstand ist stark verkuerzt.
+    // Break mark: the distance is strongly shortened.
     this.dynamic.add(breakMark(sunDirection, SUN_DISTANCE * 0.62, 0.17));
 
-    // Erde -> Mond.
+    // Earth -> Moon.
     this.dynamic.add(makeArrow(moonDirection, MOON_DISTANCE - MOON_RADIUS, PALETTE.moonLit, 0.18));
 
-    // Mond -> Sonne: echte Richtung. Sie trifft das Sonnensymbol nicht, weil
-    // die Sonne in Wirklichkeit rund 390-mal weiter entfernt ist als der Mond.
+    // Moon -> Sun: true direction. It does not hit the Sun symbol, because
+    // the Sun is in reality about 390 times farther away than the Moon.
     this.dynamic.add(makeArrow(moonToSun, 1.5, PALETTE.sunlight, 0.16, moonPosition.clone()));
-    const label = makeLabel('Richtung Mond → Sonne', LABEL.small, { color: '#f2c94c' });
+    const label = makeLabel('Direction Moon → Sun', LABEL.small, { color: '#f2c94c' });
     label.position.copy(moonPosition.clone().addScaledVector(moonToSun, 1.72));
     this.dynamic.add(label);
   }
@@ -327,41 +327,41 @@ export class SystemView {
     moonPosition: THREE.Vector3,
     moonToSun: THREE.Vector3
   ): void {
-    // Elongation: Winkel Sonne-Erde-Mond, am Erdmittelpunkt.
-    // Weit genug aussen, damit der Bogen nicht in die Beschriftungen am
-    // Erdkoerper laeuft.
+    // Elongation: Sun-Earth-Moon angle, at Earth's centre.
+    // Far enough out that the arc does not run into the labels at the
+    // Earth body.
     const elongationRadius = 2.05;
     this.dynamic.add(makeAngleArc(sunDirection, moonDirection, elongationRadius, PALETTE.accentAlt));
     const elongationLabel = makeLabel(
-      `Elongation Sonne–Erde–Mond: ${formatDegrees(state.phase.elongation)}`,
+      `Elongation Sun–Earth–Moon: ${formatDegrees(state.phase.elongation)}`,
       LABEL.annotation,
       { color: '#7fc5b8' }
     );
     elongationLabel.position.copy(arcMidpoint(sunDirection, moonDirection, elongationRadius * 1.12));
     this.dynamic.add(elongationLabel);
 
-    // Phasenwinkel: Winkel Sonne-Mond-Erde, am Mond.
+    // Phase angle: Sun-Moon-Earth angle, at the Moon.
     const toEarth = moonDirection.clone().negate();
     const phaseRadius = 0.62;
     const phaseArc = makeAngleArc(toEarth, moonToSun, phaseRadius, PALETTE.accent);
     phaseArc.position.copy(moonPosition);
     this.dynamic.add(phaseArc);
-    const phaseLabel = makeLabel(`Phasenwinkel Sonne–Mond–Erde: ${formatDegrees(state.phase.phaseAngle)}`, LABEL.annotation, {
+    const phaseLabel = makeLabel(`Phase angle Sun–Moon–Earth: ${formatDegrees(state.phase.phaseAngle)}`, LABEL.annotation, {
       color: '#e2814f'
     });
     phaseLabel.position.copy(moonPosition.clone().add(arcMidpoint(toEarth, moonToSun, phaseRadius * 1.5)));
     this.dynamic.add(phaseLabel);
 
-    // Mond -> Erde als duenne Linie, damit der Winkel am Mond ablesbar ist.
+    // Moon -> Earth as a thin line, so the angle at the Moon is legible.
     this.dynamic.add(
       makeLine([moonPosition.clone(), moonPosition.clone().addScaledVector(toEarth, 1.1)], PALETTE.axis, 0.5, true)
     );
   }
 
   /**
-   * Paralleles Sonnenlicht als gelbe Linien. Auf der Strecke Erde-Mond ist
-   * das Sonnenlicht praktisch parallel: die Richtungen Erde->Sonne und
-   * Mond->Sonne unterscheiden sich um hoechstens etwa 0,15 Grad.
+   * Parallel sunlight as yellow lines. Over the Earth-Moon distance,
+   * sunlight is practically parallel: the directions Earth->Sun and
+   * Moon->Sun differ by at most about 0.15 degrees.
    */
   private addSunlight(sunDirection: THREE.Vector3, moonPosition: THREE.Vector3): void {
     const basis = Math.abs(sunDirection.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
@@ -373,7 +373,7 @@ export class SystemView {
       const end = centre.clone().add(offset).addScaledVector(sunDirection, 1.7);
       this.dynamic.add(makeArrow(sunDirection.clone().negate(), start.distanceTo(end), PALETTE.sunlight, 0.16, start));
     }
-    const label = makeLabel('Sonnenlicht', LABEL.small, { color: '#f2c94c' });
+    const label = makeLabel('Sunlight', LABEL.small, { color: '#f2c94c' });
     label.position.copy(centre.clone().addScaledVector(sunDirection, 3.25).addScaledVector(across, 1.9));
     this.dynamic.add(label);
   }
@@ -385,7 +385,7 @@ export class SystemView {
   }
 }
 
-/** Kreis senkrecht zu einer Achse, um den Ursprung. */
+/** Circle perpendicular to an axis, around the origin. */
 function circleAroundAxis(axis: THREE.Vector3, radius: number, color: number, opacity: number): THREE.Line {
   const normal = axis.clone().normalize();
   const basis = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
@@ -401,7 +401,7 @@ function circleAroundAxis(axis: THREE.Vector3, radius: number, color: number, op
   return makeLine(points, color, opacity);
 }
 
-/** Zwei Querstriche auf einer Linie: Zeichen fuer einen verkuerzten Abstand. */
+/** Two cross-ticks on a line: symbol for a shortened distance. */
 function breakMark(direction: THREE.Vector3, distance: number, size: number): THREE.Group {
   const group = new THREE.Group();
   const unit = direction.clone().normalize();

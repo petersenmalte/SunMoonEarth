@@ -1,4 +1,4 @@
-/* Farbwelt und Typografie folgen der Homepage petersenmalte.de. */
+/* Colour palette and typography follow the petersenmalte.de homepage. */
 :root {
   --bg: #f7f4ee;
   --panel: #fffdf8;
@@ -30,7 +30,7 @@
 
 * { box-sizing: border-box; }
 
-/* Eigene display-Regeln wuerden das hidden-Attribut sonst aushebeln. */
+/* Custom display rules would otherwise override the hidden attribute. */
 [hidden] { display: none !important; }
 
 html, body {
@@ -144,7 +144,7 @@ input:focus-visible,
   aspect-ratio: 4 / 3;
   max-height: min(72vh, 680px);
 }
-#szene { display: block; width: 100%; height: 100%; touch-action: none; }
+#scene { display: block; width: 100%; height: 100%; touch-action: none; }
 
 .viewport__hint {
   position: absolute;

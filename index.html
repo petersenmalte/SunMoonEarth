@@ -1,118 +1,120 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23211d17'/%3E%3Cpath d='M16 3a13 13 0 0 1 0 26 9 13 0 0 0 0-26z' fill='%23f0e7cf'/%3E%3C/svg%3E">
-<title>SunMoonEarth – Sonne, Mond und Erde</title>
-<meta name="description" content="Schematische 3D-Darstellung von Sonnen- und Mondstand für Hamburg und Waterloo, Ontario. Lokaler Himmel und Erde–Mond–Sonne, mit Mondphase und Zeitsteuerung.">
+<title>SunMoonEarth – Sun, Moon and Earth</title>
+<meta name="description" content="Schematic 3D visualisation of the Sun and Moon's position for Hamburg and Waterloo, Ontario. Local sky and Earth–Moon–Sun views, with Moon phase and time control.">
 </head>
 <body>
-  <a class="skip-link" href="#hauptansicht">Zum Inhalt springen</a>
+  <a class="skip-link" href="#main-view">Skip to content</a>
 
   <header class="page-header">
     <div class="page-header__titles">
-      <h1>Sonne, Mond und Erde</h1>
-      <p class="page-header__subtitle">Schematische Darstellung für Hamburg und Waterloo, Ontario</p>
+      <h1>Sun, Moon and Earth</h1>
+      <p class="page-header__subtitle">Schematic visualisation for Hamburg and Waterloo, Ontario</p>
     </div>
     <a class="page-header__back" href="https://petersenmalte.github.io/petersenmalte-homepage/">← petersenmalte.de</a>
   </header>
 
   <main class="layout">
-    <section class="viewport" aria-labelledby="ansicht-titel">
-      <h2 class="visually-hidden" id="ansicht-titel">Ansicht</h2>
+    <section class="viewport" aria-labelledby="view-title">
+      <h2 class="visually-hidden" id="view-title">View</h2>
 
-      <div class="viewport__tabs" role="tablist" aria-label="Ansicht wählen">
-        <button type="button" role="tab" id="tab-himmel" class="tab" aria-selected="true" aria-controls="hauptansicht">
-          Lokaler Himmel
+      <div class="viewport__tabs" role="tablist" aria-label="Choose view">
+        <button type="button" role="tab" id="tab-sky" class="tab" aria-selected="true" aria-controls="main-view">
+          Local Sky
         </button>
-        <button type="button" role="tab" id="tab-system" class="tab" aria-selected="false" aria-controls="hauptansicht">
-          Erde–Mond–Sonne
+        <button type="button" role="tab" id="tab-system" class="tab" aria-selected="false" aria-controls="main-view">
+          Earth–Moon–Sun
         </button>
       </div>
 
-      <div class="viewport__stage" id="hauptansicht" role="tabpanel" aria-labelledby="tab-himmel" tabindex="0">
-        <canvas id="szene" aria-hidden="true"></canvas>
-        <p class="viewport__hint" id="szene-hinweis">
-          Ziehen zum Drehen, Scrollen oder zwei Finger zum Zoomen.
+      <div class="viewport__stage" id="main-view" role="tabpanel" aria-labelledby="tab-sky" tabindex="0">
+        <canvas id="scene" aria-hidden="true"></canvas>
+        <p class="viewport__hint" id="scene-hint">
+          Drag to rotate, scroll or pinch to zoom.
         </p>
-        <p class="viewport__caption" id="szene-massstab" hidden>
-          Größen und Abstände schematisch – nicht maßstabsgetreu.
-          Richtungen, Winkel und Beleuchtung folgen den berechneten Werten.
+        <p class="viewport__caption" id="scene-scale-note" hidden>
+          Sizes and distances are schematic – not to scale.
+          Directions, angles and lighting follow the calculated values.
         </p>
         <div class="webgl-fallback" id="webgl-fallback" hidden>
-          <h3>3D-Darstellung nicht verfügbar</h3>
+          <h3>3D view not available</h3>
           <p>
-            Dieser Browser stellt kein WebGL bereit, deshalb bleibt die 3D-Szene leer.
-            Alle berechneten Werte stehen weiterhin unter „Berechnete Werte“ und in der
-            Mondphasen-Anzeige – beides kommt ohne 3D aus.
+            This browser does not provide WebGL, so the 3D scene stays empty.
+            All calculated values remain available under “Calculated Values” and in
+            the Moon phase indicator – both work without 3D.
           </p>
         </div>
       </div>
 
       <div class="viewport__camera">
-        <button type="button" id="kamera-reset" class="button">Ansicht zurücksetzen</button>
-        <button type="button" id="kamera-nord" class="button">Nach Norden ausrichten</button>
+        <button type="button" id="camera-reset" class="button">Reset View</button>
+        <button type="button" id="camera-north" class="button">Align North</button>
       </div>
     </section>
 
-    <aside class="panel" aria-label="Steuerung und Werte">
-      <section class="panel__block" aria-labelledby="ort-titel">
-        <h2 class="panel__title" id="ort-titel">Beobachtungsort</h2>
-        <div class="segmented" id="ort-auswahl" role="group" aria-labelledby="ort-titel"></div>
-        <p class="panel__note" id="ort-detail"></p>
+    <aside class="panel" aria-label="Controls and values">
+      <section class="panel__block" aria-labelledby="location-title">
+        <h2 class="panel__title" id="location-title">Observer Location</h2>
+        <div class="segmented" id="location-choice" role="group" aria-labelledby="location-title"></div>
+        <p class="panel__note" id="location-detail"></p>
       </section>
 
-      <section class="panel__block" aria-labelledby="zeit-titel">
-        <h2 class="panel__title" id="zeit-titel">Zeit</h2>
-        <p class="mode" id="zeit-modus" aria-live="polite">
+      <section class="panel__block" aria-labelledby="time-title">
+        <h2 class="panel__title" id="time-title">Time</h2>
+        <p class="mode" id="time-mode" aria-live="polite">
           <span class="mode__dot" aria-hidden="true"></span>
-          <span id="zeit-modus-text">Live – aktuelle Zeit</span>
+          <span id="time-mode-text">Live – current time</span>
         </p>
         <div class="time-controls">
-          <button type="button" id="zeit-jetzt" class="button button--primary">Jetzt / Live</button>
-          <label class="time-controls__label" for="zeit-eingabe">Zeitpunkt wählen</label>
-          <input type="datetime-local" id="zeit-eingabe" step="60" class="input">
+          <button type="button" id="time-now" class="button button--primary">Now / Live</button>
+          <label class="time-controls__label" for="time-input">Choose a moment</label>
+          <input type="datetime-local" id="time-input" step="60" class="input">
         </div>
-        <p class="panel__note" id="zeit-anzeige"></p>
-        <p class="panel__warning" id="zeit-hinweis" role="status" hidden></p>
-        <div class="dst-choice" id="zeit-doppeldeutig" hidden>
-          <p class="panel__warning">Diese Ortszeit gibt es an diesem Tag zweimal (Ende der Sommerzeit).</p>
-          <div class="segmented" role="group" aria-label="Welche der beiden Stunden">
-            <button type="button" class="segmented__button" id="dst-frueh">Erste Stunde (Sommerzeit)</button>
-            <button type="button" class="segmented__button" id="dst-spaet">Zweite Stunde (Normalzeit)</button>
+        <p class="panel__note" id="time-display"></p>
+        <p class="panel__warning" id="time-warning" role="status" hidden></p>
+        <div class="dst-choice" id="time-ambiguous" hidden>
+          <p class="panel__warning">This local time occurs twice on this day (end of daylight saving time).</p>
+          <div class="segmented" role="group" aria-label="Which of the two hours">
+            <button type="button" class="segmented__button" id="dst-earlier">First hour (daylight saving)</button>
+            <button type="button" class="segmented__button" id="dst-later">Second hour (standard time)</button>
           </div>
         </div>
       </section>
 
-      <section class="panel__block" aria-labelledby="phase-titel">
-        <h2 class="panel__title" id="phase-titel">Mondphase</h2>
-        <div id="phasen-anzeige"></div>
+      <section class="panel__block" aria-labelledby="phase-title">
+        <h2 class="panel__title" id="phase-title">Moon Phase</h2>
+        <div id="phase-indicator"></div>
       </section>
 
-      <section class="panel__block" aria-labelledby="werte-titel">
-        <h2 class="panel__title" id="werte-titel">Berechnete Werte</h2>
-        <dl class="readout" id="werte"></dl>
+      <section class="panel__block" aria-labelledby="values-title">
+        <h2 class="panel__title" id="values-title">Calculated Values</h2>
+        <dl class="readout" id="values"></dl>
       </section>
 
-      <section class="panel__block panel__block--quiet" aria-labelledby="hinweis-titel">
-        <h2 class="panel__title" id="hinweis-titel">Hinweise zur Darstellung</h2>
+      <section class="panel__block panel__block--quiet" aria-labelledby="notes-title">
+        <h2 class="panel__title" id="notes-title">Notes on This Visualisation</h2>
         <ul class="notes">
-          <li>Größen und Abstände sind schematisch, nicht maßstabsgetreu.</li>
-          <li>Richtungen, Winkel und die Beleuchtung folgen den berechneten Werten, nicht den verkürzten Abständen.</li>
-          <li>Die Mondphasen entstehen durch die Beleuchtung der Mondkugel durch die Sonne, nicht durch den Erdschatten.</li>
-          <li>Höhe und Azimut enthalten die von der Bibliothek empfohlene Refraktionskorrektur.</li>
-          <li>„Über“ und „unter dem Horizont“ beziehen sich auf den Mittelpunkt des Gestirns. Auf- und Untergangszeiten berücksichtigen zusätzlich den Scheibenrand und liegen deshalb etwas später beziehungsweise früher.</li>
+          <li>Sizes and distances are schematic, not to scale.</li>
+          <li>Directions, angles and lighting follow the calculated values, not the shortened distances.</li>
+          <li>Moon phases arise from the Sun illuminating the lunar sphere, not from Earth's shadow.</li>
+          <li>Altitude and azimuth include the atmospheric refraction correction recommended by the library.</li>
+          <li>“Above” and “below the horizon” refer to the centre of the body. Rise and set times additionally account for the disc's edge and therefore fall a little later or earlier.</li>
         </ul>
       </section>
 
       <footer class="panel__footer">
         <p>
-          Berechnungen: <a href="https://github.com/cosinekitty/astronomy">Astronomy Engine</a> ·
-          3D: <a href="https://threejs.org/">Three.js</a> ·
-          Zeitzonen: <a href="https://github.com/js-temporal/temporal-polyfill">Temporal</a>
+          All astronomical positions, the Moon phase and illumination are calculated by
+          <a href="https://github.com/cosinekitty/astronomy">Astronomy Engine</a>, an open-source
+          library implementing VSOP87 planetary theory for the Sun/Earth and an ELP2000-derived
+          lunar theory for the Moon. 3D rendering: <a href="https://threejs.org/">Three.js</a>.
+          Time zones and daylight saving: <a href="https://github.com/js-temporal/temporal-polyfill">Temporal</a>.
         </p>
-        <p><a href="https://github.com/petersenmalte/SunMoonEarth">Quellcode</a></p>
+        <p><a href="https://github.com/petersenmalte/SunMoonEarth">Source code</a></p>
       </footer>
     </aside>
   </main>

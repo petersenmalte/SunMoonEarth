@@ -1,8 +1,8 @@
 /**
- * Zeichenhilfen fuer beide Szenen.
+ * Drawing helpers shared by both scenes.
  *
- * Hier steht ausschliesslich Darstellungs-Geometrie: Pfeile, Kreisboegen,
- * Beschriftungen, Kugeln. Astronomische Groessen kommen von aussen herein.
+ * This file contains only display geometry: arrows, arcs, labels, spheres.
+ * Astronomical quantities come in from outside.
  */
 
 import * as THREE from 'three';
@@ -23,12 +23,12 @@ export const PALETTE = {
   below: 0x8c6b6b
 } as const;
 
-/** HOR-System (x = Nord, y = West, z = Zenit) -> Szene (x = Ost, y = oben, z = Sued). */
+/** HOR system (x = north, y = west, z = zenith) -> scene (x = east, y = up, z = south). */
 export function horizonToScene(v: Vec3): THREE.Vector3 {
   return new THREE.Vector3(-v.y, v.z, -v.x);
 }
 
-/** EQJ-System (z = Himmelsnordpol) -> Szene (y = oben entlang Nordpol). */
+/** EQJ system (z = celestial north pole) -> scene (y = up along the north pole). */
 export function equatorialToScene(v: Vec3): THREE.Vector3 {
   return new THREE.Vector3(v.x, v.z, -v.y);
 }
@@ -53,7 +53,7 @@ export function makeLine(points: THREE.Vector3[], color: number, opacity = 1, da
   return line;
 }
 
-/** Linie vom Ursprung in eine Richtung, mit Kegelspitze am Ende. */
+/** Line from the origin in a direction, with a cone tip at the end. */
 export function makeArrow(
   direction: THREE.Vector3,
   length: number,
@@ -78,8 +78,8 @@ export function makeArrow(
 }
 
 /**
- * Kreisbogen zwischen zwei Richtungen, mit dem Radius `radius` um `origin`.
- * Zeichnet den kuerzeren der beiden moeglichen Boegen.
+ * Circular arc between two directions, with radius `radius` around the
+ * origin. Draws the shorter of the two possible arcs.
  */
 export function makeAngleArc(
   from: THREE.Vector3,
@@ -101,13 +101,13 @@ export function makeAngleArc(
   return makeLine(points, color);
 }
 
-/** Punkt in der Mitte eines Bogens - dort sitzt die Gradbeschriftung. */
+/** Point at the midpoint of an arc - where the degree label sits. */
 export function arcMidpoint(from: THREE.Vector3, to: THREE.Vector3, radius: number): THREE.Vector3 {
   const a = from.clone().normalize();
   const b = to.clone().normalize();
   const mid = a.clone().add(b);
   if (mid.lengthSq() < 1e-9) {
-    // Gegenueberliegende Richtungen: irgendeine Senkrechte waehlen.
+    // Opposite directions: pick an arbitrary perpendicular.
     const fallback = Math.abs(a.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
     mid.copy(new THREE.Vector3().crossVectors(a, fallback));
   }
@@ -122,15 +122,15 @@ export interface LabelOptions {
 }
 
 /**
- * Textbeschriftung als Sprite. Die Zeichenflaeche wird mit der Geraete-
- * Pixeldichte skaliert, damit die Schrift auch auf Mobilgeraeten scharf ist.
+ * Text label as a sprite. The canvas is sized so the text stays sharp on
+ * mobile devices too.
  */
 export function makeLabel(text: string, worldHeight: number, options: LabelOptions = {}): THREE.Sprite {
   const fontSize = options.fontSize ?? 44;
   const padding = fontSize * 0.35;
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
-  if (!context) throw new Error('2D-Kontext nicht verfuegbar');
+  if (!context) throw new Error('2D context not available');
 
   const font = `${options.bold ? '600 ' : ''}${fontSize}px "IBM Plex Sans", system-ui, sans-serif`;
   context.font = font;
@@ -159,10 +159,10 @@ export function makeLabel(text: string, worldHeight: number, options: LabelOptio
 }
 
 /**
- * Zweifarbige Kugel: Tag- und Nachtseite, getrennt durch die Ebene senkrecht
- * zur Beleuchtungsrichtung. Die Richtung wird als Uniform gesetzt, nicht aus
- * einer Lichtquellenposition abgeleitet - so bleibt der Terminator korrekt,
- * auch wenn die Szene stark verkleinerte Abstaende zeigt.
+ * Two-tone sphere: day and night side, separated by the plane perpendicular
+ * to the lighting direction. The direction is set as a uniform rather than
+ * derived from a light source position - this keeps the terminator correct
+ * even when the scene shows strongly shortened distances.
  */
 export function makeTwoToneSphere(
   radius: number,
@@ -190,9 +190,9 @@ export function makeTwoToneSphere(
       varying vec3 vNormal;
       void main() {
         float incidence = dot(normalize(vNormal), normalize(uLightDirection));
-        // Schmaler weicher Saum, damit der Terminator nicht ausgefranst wirkt.
+        // Narrow soft edge so the terminator does not look ragged.
         float day = smoothstep(-0.03, 0.03, incidence);
-        // Leichte Abdunklung zum Terminator hin macht die Kugelform lesbar.
+        // Slight darkening toward the terminator makes the sphere shape legible.
         float shading = mix(0.75, 1.0, clamp(incidence, 0.0, 1.0));
         vec3 color = mix(uDarkColor, uLitColor * shading, day);
         gl_FragColor = vec4(color, 1.0);
@@ -209,18 +209,18 @@ export function makeTwoToneSphere(
 }
 
 /**
- * Beleuchtete Mondflaeche als ebene Form, wie der Beobachter sie sieht.
- * Helle Kante liegt auf der lokalen +x-Achse. Die Flaeche betraegt exakt
- * fraction * pi * radius^2: der Terminator ist eine Halbellipse mit der
- * Halbachse radius * (1 - 2 * fraction).
+ * Illuminated Moon area as a flat shape, as the observer sees it.
+ * The bright limb lies on the local +x axis. The area is exactly
+ * fraction * pi * radius^2: the terminator is a half-ellipse with semi-axis
+ * radius * (1 - 2 * fraction).
  */
 export function makeLitMoonShape(radius: number, fraction: number): THREE.Shape {
   const k = Math.min(Math.max(fraction, 0), 1);
   const terminator = radius * (1 - 2 * k);
   const shape = new THREE.Shape();
-  // Helle Kante: Halbkreis von unten ueber +x nach oben.
+  // Bright limb: half-circle from bottom over +x to top.
   shape.absarc(0, 0, radius, -Math.PI / 2, Math.PI / 2, false);
-  // Terminator: Halbellipse zurueck nach unten.
+  // Terminator: half-ellipse back down.
   shape.absellipse(
     0,
     0,
@@ -236,14 +236,14 @@ export function makeLitMoonShape(radius: number, fraction: number): THREE.Shape 
 }
 
 /**
- * Orientierung einer Scheibe, die dem Ursprung zugewandt ist: die lokale
- * x-Achse zeigt zur hellen Mondkante, die z-Achse zum Beobachter.
+ * Orientation of a disc facing the origin: the local x axis points to the
+ * bright lunar limb, the z axis toward the observer.
  */
 export function limbBasis(toBody: THREE.Vector3, toLight: THREE.Vector3): THREE.Matrix4 {
   const body = toBody.clone().normalize();
   let limb = toLight.clone().addScaledVector(body, -toLight.dot(body));
   if (limb.lengthSq() < 1e-10) {
-    // Licht genau hinter oder vor dem Koerper: beliebige Senkrechte waehlen.
+    // Light exactly behind or in front of the body: pick an arbitrary perpendicular.
     const fallback = Math.abs(body.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
     limb = new THREE.Vector3().crossVectors(body, fallback);
   }
@@ -254,5 +254,5 @@ export function limbBasis(toBody: THREE.Vector3, toLight: THREE.Vector3): THREE.
 }
 
 export function formatDegrees(value: number, digits = 1): string {
-  return `${value.toFixed(digits).replace('.', ',')}°`;
+  return `${value.toFixed(digits)}°`;
 }

@@ -1,20 +1,20 @@
 /**
- * Mondphasen-Anzeige fuer den aktiven Beobachter.
+ * Moon phase indicator for the active observer.
  *
- * Diese Anzeige haengt nicht an der 3D-Kamera: sie zeigt die Mondscheibe so,
- * wie sie der Beobachter am Himmel sieht - mit dem Zenit oben.
+ * This indicator is not tied to the 3D camera: it shows the lunar disc the
+ * way the observer sees it in the sky - with the zenith pointing up.
  *
- * Bibliothekswerte:
- *  - beleuchteter Anteil k: Illumination(Body.Moon).phase_fraction
- *  - Richtungen von Mond und Sonne: Horizontalkoordinaten aus Astronomy Engine
+ * Library values:
+ *  - illuminated fraction k: Illumination(Body.Moon).phase_fraction
+ *  - Moon and Sun directions: horizontal coordinates from Astronomy Engine
  *
- * Eigenanteil ist nur Zeichen-Geometrie:
- *  - Die Bildebene des Beobachters wird durch "oben" (Projektion des Zenits)
- *    und "rechts" (Mondrichtung x oben) aufgespannt.
- *  - Der Winkel der hellen Mondkante ergibt sich aus der Projektion der
- *    Sonnenrichtung in diese Ebene.
- *  - Der Terminator ist eine Halbellipse mit der Halbachse R*(1-2k). Fuer
- *    k = 0,5 wird daraus eine Gerade, fuer k = 1 der volle Kreis.
+ * The custom part is drawing geometry only:
+ *  - The observer's picture plane is spanned by "up" (projection of the
+ *    zenith) and "right" (Moon direction x up).
+ *  - The angle of the bright limb follows from projecting the Sun direction
+ *    into this plane.
+ *  - The terminator is a half-ellipse with semi-axis R*(1-2k). For k = 0.5
+ *    this becomes a straight line, for k = 1 the full circle.
  */
 
 import type { AstroState, Vec3 } from './astro';
@@ -47,18 +47,18 @@ function subtractProjection(v: Vec3, onto: Vec3): Vec3 {
 }
 
 /**
- * Winkel der hellen Mondkante, im Uhrzeigersinn von "oben" (Zenitrichtung)
- * aus gesehen, in Grad.
+ * Angle of the bright lunar limb, seen clockwise from "up" (the zenith
+ * direction), in degrees.
  */
 export function brightLimbAngle(state: AstroState): number {
   const moon = normalize(state.moon.horizonUnit);
   const sun = normalize(moonToSunInHorizonFrame(state.date, state.location, state.geo.moonToSunUnit));
 
-  // Zenit im HOR-System.
+  // Zenith in the HOR system.
   const zenith: Vec3 = { x: 0, y: 0, z: 1 };
   let up = subtractProjection(zenith, moon);
   if (Math.hypot(up.x, up.y, up.z) < 1e-6) {
-    // Mond genau im Zenit oder Nadir: Norden als Ersatzrichtung.
+    // Moon exactly at the zenith or nadir: use north as a fallback direction.
     up = subtractProjection({ x: 1, y: 0, z: 0 }, moon);
   }
   up = normalize(up);
@@ -69,8 +69,8 @@ export function brightLimbAngle(state: AstroState): number {
 }
 
 /**
- * SVG-Pfad der beleuchteten Flaeche, helle Kante nach +x.
- * Die Flaeche betraegt exakt k * pi * R^2.
+ * SVG path of the illuminated area, bright limb facing +x.
+ * The area is exactly k * pi * R^2.
  */
 export function litAreaPath(fraction: number, radius = RADIUS, centre = CENTRE): string {
   const k = Math.min(Math.max(fraction, 0), 1);
@@ -101,9 +101,9 @@ export class PhaseIndicator {
     const fraction = state.phase.illuminatedFraction;
     const percent = Math.round(fraction * 100);
     const description =
-      `${state.phase.name}, ${percent} % beleuchtet, ` +
-      `Ansicht für ${state.location.label}` +
-      (state.moon.aboveHorizon ? '' : ' (Mond unter dem Horizont)');
+      `${state.phase.name}, ${percent} % illuminated, ` +
+      `view for ${state.location.label}` +
+      (state.moon.aboveHorizon ? '' : ' (Moon below the horizon)');
 
     this.figure.innerHTML = `
       <svg viewBox="0 0 ${SIZE} ${SIZE}" role="img" aria-label="${escapeHtml(description)}" focusable="false">
@@ -113,7 +113,7 @@ export class PhaseIndicator {
         </g>
         <circle class="phase-indicator__rim" cx="${CENTRE}" cy="${CENTRE}" r="${RADIUS}"></circle>
         <line class="phase-indicator__zenith" x1="${CENTRE}" y1="6" x2="${CENTRE}" y2="16"></line>
-        <text class="phase-indicator__zenith-label" x="${CENTRE}" y="${SIZE - 2}" text-anchor="middle">Horizont</text>
+        <text class="phase-indicator__zenith-label" x="${CENTRE}" y="${SIZE - 2}" text-anchor="middle">Horizon</text>
       </svg>
     `;
     this.figure.classList.toggle('phase-indicator__figure--below', !state.moon.aboveHorizon);
