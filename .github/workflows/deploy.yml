@@ -26,11 +26,10 @@ jobs:
       - run: npm ci
       - name: Typprüfung und Build
         run: npm run build
-      # enablement schaltet GitHub Pages beim ersten Lauf selbst ein, statt
-      # es vorher von Hand unter Settings -> Pages einstellen zu muessen.
+      # Voraussetzung: unter Settings -> Pages ist als Quelle "GitHub Actions"
+      # eingestellt. Das Einschalten per enablement schlaegt fehl, weil der
+      # GITHUB_TOKEN eines Arbeitsablaufs keine Pages-Site anlegen darf.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
