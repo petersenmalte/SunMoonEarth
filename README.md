@@ -22,7 +22,7 @@ npm install
 npm run dev        # development server
 npm run typecheck  # check TypeScript without emitting output
 npm run build      # typecheck and production bundle into dist/
-npm run preview    # serve dist/ locally under /SunMoonEarth/
+npm run preview    # serve dist/ locally under /
 npm test           # Playwright checks against the built application
 ```
 
@@ -33,13 +33,20 @@ can be used with `CHROMIUM_PATH=/path/to/chrome npm test`.
 ## Deployment
 
 The application is a static site. `.github/workflows/deploy.yml` builds on
-every push to `main` and publishes `dist/` via GitHub Pages at
-`https://petersenmalte.github.io/SunMoonEarth/`.
+every push to `main` and publishes `dist/` via GitHub Pages at the custom
+domain `https://lunarcompass.app/`.
+
+The custom domain is set via `public/CNAME` (copied into `dist/` as-is by
+Vite) plus four DNS `A` records at the domain's registrar pointing at
+GitHub Pages' load balancer IPs (185.199.108.153, .109.153, .110.153,
+.111.153). See GitHub's
+[custom domain documentation](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site)
+for the exact steps and optional `AAAA`/`www` records.
 
 The base path lives in `vite.config.ts` and can be changed without a code
 change via the `BASE_PATH` environment variable, e.g.
-`BASE_PATH=/ npm run build` for a deployment at the root of a different
-domain.
+`BASE_PATH=/SunMoonEarth/ npm run build` for a deployment back under a
+github.io project-page path instead of the custom domain's root.
 
 For the workflow to take effect, the source under *Settings → Pages* must be
 set to **GitHub Actions**.

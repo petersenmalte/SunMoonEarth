@@ -4,18 +4,18 @@ export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
   use: {
-    baseURL: 'http://127.0.0.1:4174/SunMoonEarth/',
+    baseURL: 'http://127.0.0.1:4174/',
     browserName: 'chromium',
     headless: true,
     launchOptions: {
-      // Vorinstalliertes Chromium der Umgebung; SwiftShader liefert WebGL
-      // auch ohne GPU, damit die 3D-Ansichten im Test wirklich zeichnen.
+      // Pre-installed Chromium of this environment; SwiftShader provides
+      // WebGL even without a GPU, so the 3D views actually render in tests.
       executablePath: process.env.CHROMIUM_PATH || undefined,
       args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
     },
-    // Fester Zeitzonen-Kontext, damit Anzeigen unabhaengig vom Testrechner sind.
+    // Fixed time zone context, so the display is independent of the test machine.
     timezoneId: 'UTC',
-    locale: 'de-DE'
+    locale: 'en-GB'
   },
   webServer: {
     command: 'npx vite preview --port 4174 --strictPort',
